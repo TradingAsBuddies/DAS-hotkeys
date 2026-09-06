@@ -1,0 +1,21 @@
+# ── Licensed market data — MUST NOT be redistributed ────────────────────────
+# 110MB of Polygon 1-minute bars. Regenerate with backtest/fetch_bars.py using
+# your own POLYGON_API_KEY. Publishing them would redistribute licensed data.
+backtest/bars/
+
+# ── Vendor documentation — copyright DAS|Inc ────────────────────────────────
+# 20 manuals downloaded from dastrader.com, plus their extracted text. These are
+# DAS's copyrighted material; this repo links to them instead of republishing.
+# docs/manuals/MANIFEST.md carries every source URL so anyone can fetch their own.
+docs/manuals/*.pdf
+docs/text/
+
+# ── Environments and build artifacts ────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.log
+
+# ── Local scratch ───────────────────────────────────────────────────────────
+*.tmp
+.DS_Store
