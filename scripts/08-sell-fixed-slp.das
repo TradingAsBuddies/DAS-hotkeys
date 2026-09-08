@@ -56,10 +56,33 @@ if ($px  == 0)  { MsgBox("ABORT: no BID on montage"); return; }
 if ($riskDollars > 0) { $qty = Round($riskDollars / $stopDist, 100); }
 if ($qty < 1) { MsgBox("ABORT: qty is " + $qty); return; }
 
-// ---- prices - $px, not BID ---------------------------------------------------
+// ---- prices - subtraction only ----------------------------------------------
+// ScriptError:100 "Invalid parameter" on `Round($px + $stopDist, 2)` at 12:44:55
+// on 2026-09-08, while the `-` line directly above it parsed fine.
+//
+// Leading hypothesis: DAS overloads `+` for both numeric addition and string
+// concatenation, so if a montage read comes back as a string, `$px + $stopDist`
+// builds "527.660.11" and Round() rejects it. `-` has no string meaning, so it
+// coerces to numeric and works.
+//
+// COUNTER-EVIDENCE, unresolved: the working buy script does exactly this --
+// `$entry = Round($px + $entrySlip, 2)` -- and produced 8.13 from ask 7.98 on
+// POET. So `+` is not universally broken. What differs is unknown: it could be
+// $m.BID vs $m.ASK returning different types, the symbol, or an undefined
+// $stopDist at paste time.
+//
+// This rewrite is therefore a WORKAROUND that removes the dependency, not a
+// confirmed root-cause fix. Run the diagnostic in 04-fl-hotkeys.das (F1) to
+// settle it.
+//
+// Rather than depend on which type $m.BID returns, everything here is written
+// as subtraction. Negating first costs one line and removes the question.
+$negStop = 0 - $stopDist;
+$negSlip = 0 - $limitSlip;
+
 $entry   = Round($px - $entrySlip, 2);       // marketable limit, downside
-$trigger = Round($px + $stopDist, 2);        // stop fires 11c ABOVE
-$limit   = Round($trigger + $limitSlip, 2);  // accept fills up to here
+$trigger = Round($px - $negStop, 2);         // stop fires 11c ABOVE
+$limit   = Round($trigger - $negSlip, 2);    // accept fills up to here
 
 MsgBox("SHORT " + $qty + " " + $sym + "\n" +
        "entry   " + $entry + "\n" +

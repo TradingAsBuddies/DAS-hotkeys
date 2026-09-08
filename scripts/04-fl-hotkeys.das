@@ -112,3 +112,18 @@ MsgBox("sym   = [" + $fl_m.GetTicker() + "]" + "\n" +
        "ASK   = " + $fl_m.ASK + "\n" +
        "BID   = " + $fl_m.BID + "\n" +
        "Share = " + $fl_m.Share);
+
+
+// ---- F1 : diagnostic — is montage arithmetic numeric or string? -------------
+// Settles ScriptError:100 "Invalid parameter" on Round($px + $n, 2).
+// If the + row shows something like 527.660.11 the read is a STRING and + is
+// concatenating. If it shows 527.77 the read is numeric and the fault is
+// elsewhere. Run with a real symbol loaded.
+$d_m = GetWindowObj("montage1");
+$d_b = $d_m.BID;
+$d_a = $d_m.ASK;
+MsgBox("BID       [" + $d_b + "]" + "\n" +
+       "ASK       [" + $d_a + "]" + "\n" +
+       "BID + .11 [" + ($d_b - (0 - 0.11)) + "]   via subtraction" + "\n" +
+       "BID - .11 [" + ($d_b - 0.11) + "]" + "\n" +
+       "ASK + .15 [" + ($d_a - (0 - 0.15)) + "]   via subtraction");
