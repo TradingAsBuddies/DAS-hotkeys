@@ -55,8 +55,8 @@ $riskDollars = 0;       // 0 = use the montage Share field.
 //
 // Requires the montage to be NAMED flMontage (right-click its title bar) and
 // the desktop saved. See 01-fl-layout-build.das.
-$m = GetWindowObj("flMontage");
-if (isObject($m) == 0) { MsgBox("ABORT: no window named flMontage"); return; }
+$m = GetWindowObj("montage1");
+if (isObject($m) == 0) { MsgBox("ABORT: no window named montage1"); return; }
 
 $sym = $m.GetTicker();
 $px  = $m.BID;             // shorting, so reference the bid
@@ -94,9 +94,27 @@ MsgBox("SHORT " + $qty + " " + $sym + "\n" +
 // plain B — you do not work out whether it is a buy-to-cover.
 NewOrderObj("SS " + $qty + " " + $sym + " L " + $entry + " D+").Send();
 Wait(1100);                                  // one Send() per second, always
-NewOrderObj("B " + $qty + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
 
-MsgLog("SHORT ", $sym, " qty=", $qty, " entry=", $entry, " stop=", $trigger, "/", $limit);
+// ---- ARM THE STOP ONLY AGAINST A REAL POSITION -------------------------------
+// Mirror of the guard in 07. A bare `B` cover leg fired with no short under it
+// does not fail safe -- it opens a LONG. Same class of bug that produced
+// "Accept,Shrt,POET,5" from a buy script on 2026-09-08.
+//
+// POS is negative when short, so the test is on the magnitude.
+$pos = $m.POS;
+if ($pos > -1) {
+  MsgBox("NO STOP SENT" + "\n" +
+         "short has not filled (POS=" + $pos + ")" + "\n\n" +
+         "You are UNPROTECTED. Cancel the entry, or arm the" + "\n" +
+         "stop manually once it fills.");
+  MsgLog("SHORT ", $sym, " entry sent, unfilled after 1.1s - no stop armed");
+  return;
+}
+
+$cover = Abs($pos);      // size the cover to what actually filled
+NewOrderObj("B " + $cover + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
+
+MsgLog("SHORT ", $sym, " qty=", $cover, " entry=", $entry, " stop=", $trigger, "/", $limit);
 
 
 // ============================================================================
@@ -113,7 +131,7 @@ MsgLog("SHORT ", $sym, " qty=", $qty, " entry=", $entry, " stop=", $trigger, "/"
 // should come from the position rather than the Share box:
 //
 //   $qty = POS;                                   // montage position property
-//   NewOrderObj("S " + $qty + " " + $sym + " L " + Round(BID - 0.15, 2) + " D+").Send();
+//   NewOrderObj("S " + $qty + " " + $sym + " L " + Round($m.BID - 0.15, 2) + " D+").Send();
 //
 // Cancel the resting stop first, or you will be left short by the size of the
 // stop once it triggers against a position you no longer hold:

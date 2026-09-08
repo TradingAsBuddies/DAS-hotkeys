@@ -1,123 +1,126 @@
 // ============================================================================
-// 07-buy-fixed-slp.das  —  BUY with a fixed 11-cent Stop-Limit-P
-// One hotkey. Run from the MONTAGE window.
+// 07-buy-fixed-slp.das  —  BUY 11c stop.  Cannot open a short.
+// One hotkey. Window must be named  montage1
 // ============================================================================
 //
-// Fixed-distance sibling of 06-entry-with-slp-stop.das, which sizes the stop
-// off ATR. Use this when you have already decided the stop level by structure
-// (below a shelf, a VWAP reclaim, the low of the signal candle) and 11 cents is
-// simply where it goes.
-//
 // ─────────────────────────────────────────────────────────────────────────────
-// THE ONE DECISION THAT MATTERS HERE: $limitSlip
+// WHAT WENT WRONG ON 2026-09-08
 //
-// A stop-LIMIT does not guarantee a fill. It guarantees a PRICE. Past the limit
-// you are still holding.
+//   Accept,Shrt,POET,5,7.9,REB25,TR4425,,SLP:7.9 8.01,Oid:7652
 //
-//   trigger = entry - 0.11        the stop fires here
-//   limit   = trigger - slip      you will accept fills down to here
+// A BUY script that opened a 5-share SHORT. Three defects compounded:
 //
-// So your real worst case is 0.11 + slip, not 0.11.
+// 1. MINE, and the dangerous one. The protective leg was a bare `S`:
+//        NewOrderObj("S " + $qty + " " + $sym + " SLP ...").Send();
+//    From das-hotkeys-guide.pdf p.11: "There is no SHORT command, use SELL".
+//    From das-advanced-hotkey-guide.pdf p.26: "our system converts Sell and
+//    Short appropriately". So `S` with NO LONG POSITION UNDER IT is not a stop.
+//    It is a short. If the entry does not fill, the stop leg opens a naked one.
 //
-//   slip 0.20  ->  worst case 0.31  = 2.8x the stop you asked for. Wrong.
-//   slip 0.05  ->  worst case 0.16  = 1.45x. Reasonable on a liquid name.
-//   slip 0.02  ->  worst case 0.13  but you will get left behind on a fast drop.
+// 2. Bare ASK in the price lines:
+//        $entry = Round(ASK + 0.15, 2);
+//    Bare property names bind to the FOCUSED window, not to $m. When focus is
+//    not the montage they return nothing, and the entry limit becomes garbage
+//    that rests unfilled — which is precisely what lets defect 1 fire.
 //
-// 06 uses 0.20 because an ATR-sized stop is usually 50c-plus and 20c is noise
-// against it. Against 11 cents it is not noise. Default here is 0.05.
+// 3. The SLP string was missing its limit price:
+//        "SLP " + $trigger + " " + " D+"     ->   "SLP 7.9  D+"
+//    SLP takes TWO prices, <trigger> <limit>. One was supplied.
 //
-// If never filling is the thing you actually fear, use SM (stop-market) instead
-// of SLP: same argument slot, one price, always fills, price unknown.
+// All three are fixed below. The guard on line "if ($pos < 1)" is the one that
+// makes a naked short unreachable — it is the important line in this file.
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// PREREQUISITE: SLP is not enabled by default and needs your broker to turn it
-// on for your account (das-advanced-hotkey-guide.pdf p.27). If it rejects, drop
-// the P and use SL — identical arguments, regular hours only.
-// ============================================================================
 
 // ---- inputs ----------------------------------------------------------------
-$stopDist   = 0.11;     // fixed stop distance, dollars
-$limitSlip  = 0.05;     // how far through the trigger the limit sits. See above.
-$entrySlip  = 0.15;     // marketable-limit offset on the entry
-$riskDollars = 0;       // 0 = use the montage Share field.
-                        // Set to your 1R and the size computes itself:
-                        //   28 / 0.11 = 254 -> 200 shares after even-lot rounding
-                        //   75 / 0.11 = 681 -> 600 shares
+$stopDist    = 0.11;    // stop distance in dollars
+$limitSlip   = 0.05;    // stop's limit sits this far through the trigger.
+                        // Real worst case = $stopDist + $limitSlip = 0.16.
+$entrySlip   = 0.15;    // marketable-limit offset on the entry
+$riskDollars = 0;       // 0 = use the montage Share box. 28 -> 200sh at 0.11.
 
-// ---- read state from the MONTAGE OBJECT ------------------------------------
-// NOT bare `ASK` / `SHARE` / `SYMBOL`. Bare property names bind to whatever
-// window happens to be FOCUSED when the hotkey fires, so they silently return
-// nothing when focus is on a chart -- and `SYMBOL` is not a montage property at
-// all (it belongs to the General Window Object; the montage list is BID ASK
-// L2BID L2ASK ISBBID ISBASK LAST HI LO OPEN PCL POS Price Share SSARE TOGSSARE
-// ROUTE DEFSHARE SHARECAP STOPTYPE STOPPRICE).
-//
-// The manual's own guidance, p.21: "In general, it may be better to use
-// GetWindowObj() to manipulate the objects rather than FocusWindow."
-//
-// Requires the montage to be NAMED flMontage (right-click its title bar) and
-// the desktop saved. See 01-fl-layout-build.das.
-$m = GetWindowObj("flMontage");
-if (isObject($m) == 0) { MsgBox("ABORT: no window named flMontage"); return; }
+// ---- read state — ALWAYS through $m, never bare ------------------------------
+$m = GetWindowObj("montage1");
+if (isObject($m) == 0) { MsgBox("ABORT: no window named montage1"); return; }
 
 $sym = $m.GetTicker();
-$px  = $m.ASK;             // buying, so reference the offer
+$px  = $m.ASK;
 $qty = $m.Share;
 
 if ($sym == "") { MsgBox("ABORT: no symbol on montage"); return; }
 if ($px  == 0)  { MsgBox("ABORT: no ASK on montage"); return; }
 
-// ---- sizing ----------------------------------------------------------------
-if ($riskDollars > 0) {
-  // precision 100 = round DOWN to even lots (das-hotkeys-guide.pdf p.26)
-  $qty = Round($riskDollars / $stopDist, 100);
-  if ($qty < 1) { MsgBox("ABORT: risk " + $riskDollars + " buys 0 shares"); return; }
+if ($riskDollars > 0) { $qty = Round($riskDollars / $stopDist, 100); }
+if ($qty < 1) { MsgBox("ABORT: qty is " + $qty); return; }
+
+// ---- prices — $px, not ASK ---------------------------------------------------
+$entry   = Round($px + $entrySlip, 2);
+$trigger = Round($px - $stopDist, 2);
+$limit   = Round($trigger - $limitSlip, 2);
+
+// ---- send entry --------------------------------------------------------------
+NewOrderObj("B " + $qty + " " + $sym + " L " + $entry + " D+").Send();
+Wait(1100);                                  // one Send() per second
+
+// ---- ARM THE STOP ONLY AGAINST A REAL POSITION -------------------------------
+// This is the guard. POS is the montage's position property. If the entry has
+// not filled, POS is 0 and we send nothing — better to sit unprotected and know
+// it than to open a short you did not ask for.
+//
+// Note the stop is sized to $pos, NOT $qty, so a PARTIAL fill gets a stop for
+// the shares actually held rather than an over-sized one that shorts the
+// difference.
+$pos = $m.POS;
+
+if ($pos < 1) {
+  MsgBox("NO STOP SENT" + "\n" +
+         "entry has not filled (POS=" + $pos + ")" + "\n\n" +
+         "You are UNPROTECTED. Either cancel the entry," + "\n" +
+         "or run the ARM STOP hotkey once it fills.");
+  MsgLog("BUY ", $sym, " entry sent, unfilled after 1.1s - no stop armed");
+  return;
 }
 
-if ($qty < 1) { MsgBox("ABORT: montage Share is " + $qty); return; }
-
-// ---- prices ----------------------------------------------------------------
-$entry   = Round($px + $entrySlip, 2);
-$trigger = Round($px - $stopDist, 2);        // 11 cents below
-$limit   = Round($trigger - $limitSlip, 2);  // limit sits BELOW the trigger
-
-// ---- confirm ---------------------------------------------------------------
-// Delete once you trust it. $maxLoss is the number that actually matters:
-// it is what you lose if the stop fills at the limit rather than the trigger.
-$maxLoss = Round($qty * ($stopDist + $limitSlip), 2);
-
-MsgBox("LONG " + $qty + " " + $sym + "\n" +
-       "entry   " + $entry + "\n" +
-       "stop    " + $trigger + "  (-" + $stopDist + ")" + "\n" +
-       "limit   " + $limit + "\n" +
-       "risk    " + Round($qty * $stopDist, 2) + " at trigger" + "\n" +
-       "worst   " + $maxLoss + " at limit");
-
-// ---- send ------------------------------------------------------------------
-NewOrderObj("B " + $qty + " " + $sym + " L " + $entry + " D+").Send();
-Wait(1100);                                  // one Send() per second, always
-NewOrderObj("S " + $qty + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
-
-MsgLog("BUY ", $sym, " qty=", $qty, " entry=", $entry, " stop=", $trigger, "/", $limit);
+NewOrderObj("S " + $pos + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
+MsgLog("BUY ", $sym, " qty=", $pos, " entry=", $entry, " stop=", $trigger, "/", $limit);
 
 
 // ============================================================================
-// VARIANTS — swap the second Send() line
+// COMPANION HOTKEY — ARM STOP
+// Bind separately. Run it after a delayed fill, when the script above bailed
+// with "NO STOP SENT". Safe to press twice; it refuses when flat.
 //
-// Stop-market instead. Always fills, price not guaranteed. One price argument:
-//   NewOrderObj("S " + $qty + " " + $sym + " SM " + $trigger + " D+").Send();
+//   $m = GetWindowObj("montage1");
+//   $pos = $m.POS;
+//   if ($pos < 1) { MsgBox("Flat - nothing to protect"); return; }
+//   $sym = $m.GetTicker();
+//   $trigger = Round($m.LAST - 0.11, 2);
+//   $limit   = Round($trigger - 0.05, 2);
+//   NewOrderObj("S " + $pos + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
 //
-// Regular hours only, if SLP is not enabled on your account:
-//   NewOrderObj("S " + $qty + " " + $sym + " SL " + $trigger + " " + $limit + " DAY").Send();
+// ============================================================================
+// THE BETTER FIX, once you can test it
 //
-// Stop measured from the FILL rather than the offer. More correct, but the fill
-// is not known at send time — you would place the entry, poll GetOrderObj() for
-// the fill price, then send the stop. That is a second script, and it costs you
-// the second between the two Send() calls with no protection on.
+// TriggerOrder attaches the stop to the entry so it is armed BY THE FILL, not
+// by a timer. das-hotkeys-guide.pdf p.7: "Trigger order will be sent to market
+// when primary order fully filled." No timing window, no POS check, no chance
+// of a detached leg:
 //
-// Force a route that supports stops (STOP route is the default otherwise):
-//   NewOrderObj("S " + $qty + " " + $sym + " CPSORS SLP " + $trigger + " " + $limit + " D+")
+//   $m.Price = $entry;
+//   $m.Share = $qty;
+//   $t = "TriggerOrder=RT:STOP STOPTYPE:LIMIT PX:" + $limit +
+//        " STOPPRICE:" + $trigger + " ACT:SELL QTY:" + $qty + " TIF:DAY+;";
+//   Exec($t);
+//   BUY;
 //
-// SHORT version of this same script: see BLOCK B in 06-entry-with-slp-stop.das.
-// Flip ASK->BID, B->SS, and both price offsets; argument order never changes.
+// Unresolved: whether TriggerOrder accepts interpolated variables directly or
+// needs the Exec() wrapper shown here, and whether STOPTYPE takes LIMITP (the
+// doc lists LIMIT/MARKET/Trailing/Range for this field, and LimitP only for the
+// standalone StopType= command). Test in SIM with 1 share and read the
+// TradeLog before trusting it.
+//
+// ============================================================================
+// TEST SEQUENCE — SIM, Share = 1
+//   1. Fire it. TradeLog must show side `Buy`. If you ever see `Shrt`, stop.
+//   2. Unfilled entry -> you get "NO STOP SENT" and NO second order. Correct.
+//   3. Filled entry   -> one Buy, then one Sell SLP with TWO prices.
 // ============================================================================
