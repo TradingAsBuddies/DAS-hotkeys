@@ -49,11 +49,14 @@ $riskDollars = 0;       // 0 = use montage Share as-is.
 
 // ---- read state ------------------------------------------------------------
 // ATR comes off the chart, not the montage — the montage has no ATR property.
-$c   = GetWindowObj("flChart1m");
-$atr = $c.GetStudyVal("atr");
+$c = GetWindowObj("flChart1m");
+$m = GetWindowObj("flMontage");
+if (isObject($c) == 0) { MsgBox("ABORT: no window named flChart1m"); return; }
+if (isObject($m) == 0) { MsgBox("ABORT: no window named flMontage"); return; }
 
-$sym = SYMBOL;
-$px  = ASK;             // buying, so reference the offer
+$atr = $c.GetStudyVal("atr");
+$sym = $m.GetTicker();
+$px  = $m.ASK;            // buying, so reference the offer
 
 // ---- guards ----------------------------------------------------------------
 // This is the hotkey equivalent of live invariant I-1: never submit an entry
@@ -61,12 +64,13 @@ $px  = ASK;             // buying, so reference the offer
 // entry price — the exact defect that made R explode to 1e12 in the backtest.
 if ($atr == 0) { MsgBox("ABORT: no ATR - check the study is named atr"); return; }
 if ($px  == 0) { MsgBox("ABORT: no price on montage"); return; }
+if ($sym == "") { MsgBox("ABORT: no symbol on montage"); return; }
 
 $stopDist = Round($stopMult * $atr, 2);
 if ($stopDist < 0.02) { MsgBox("ABORT: stop distance " + $stopDist + " too tight"); return; }
 
 // ---- sizing ----------------------------------------------------------------
-$qty = SHARE;
+$qty = $m.Share;
 if ($riskDollars > 0) {
   // Round precision 100 = round DOWN to even lots (das-hotkeys-guide p.26)
   $qty = Round($riskDollars / $stopDist, 100);
@@ -104,19 +108,23 @@ $limitSlip  = 0.20;
 $entrySlip  = 0.15;
 $riskDollars = 0;
 
-$c   = GetWindowObj("flChart1m");
-$atr = $c.GetStudyVal("atr");
+$c = GetWindowObj("flChart1m");
+$m = GetWindowObj("flMontage");
+if (isObject($c) == 0) { MsgBox("ABORT: no window named flChart1m"); return; }
+if (isObject($m) == 0) { MsgBox("ABORT: no window named flMontage"); return; }
 
-$sym = SYMBOL;
-$px  = BID;             // shorting, so reference the bid
+$atr = $c.GetStudyVal("atr");
+$sym = $m.GetTicker();
+$px  = $m.BID;            // shorting, so reference the bid
 
 if ($atr == 0) { MsgBox("ABORT: no ATR - check the study is named atr"); return; }
 if ($px  == 0) { MsgBox("ABORT: no price on montage"); return; }
+if ($sym == "") { MsgBox("ABORT: no symbol on montage"); return; }
 
 $stopDist = Round($stopMult * $atr, 2);
 if ($stopDist < 0.02) { MsgBox("ABORT: stop distance " + $stopDist + " too tight"); return; }
 
-$qty = SHARE;
+$qty = $m.Share;
 if ($riskDollars > 0) {
   $qty = Round($riskDollars / $stopDist, 100);
   if ($qty < 1) { MsgBox("ABORT: risk " + $riskDollars + " buys 0 shares at " + $stopDist); return; }

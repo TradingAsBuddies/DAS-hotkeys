@@ -90,3 +90,25 @@ data.ShowObject();
 // ---- F10 : discovery — dump the chart window object ------------------------
 $fl_c = GetWindowObj("flChart1m");
 $fl_c.ShowObject();
+
+
+// ---- F11 : discovery — dump the MONTAGE object -----------------------------
+// Run this FIRST, before trusting 06/07/08. It prints every property the
+// montage object actually exposes on your build, with read/write flags — which
+// is how you confirm the exact casing of Share, ASK, BID, and whether
+// GetTicker() or .Symbol is the right way to read the ticker here.
+//
+// If it errors, the montage is not named flMontage: right-click its title bar,
+// name it, then File > Save Desktop.
+$fl_m = GetWindowObj("flMontage");
+$fl_m.ShowObject();
+
+
+// ---- F12 : discovery — read back what the order scripts will use -----------
+// Same three values 07/08 send. If any come back blank or zero, the order
+// scripts will abort rather than send a malformed order — but check here first.
+$fl_m = GetWindowObj("flMontage");
+MsgBox("sym   = [" + $fl_m.GetTicker() + "]" + "\n" +
+       "ASK   = " + $fl_m.ASK + "\n" +
+       "BID   = " + $fl_m.BID + "\n" +
+       "Share = " + $fl_m.Share);
