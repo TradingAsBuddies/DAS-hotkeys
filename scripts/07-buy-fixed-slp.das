@@ -31,6 +31,46 @@
 // makes a naked short unreachable — it is the important line in this file.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// VERIFIED WORKING - SIM TR4425, POET, 2026-09-08 07:26:06
+//
+//   Feed Bid:7.94, Ask:7.98
+//   Sending,Buy,POET,5,8.13,REB25,,,Oid:8911
+//   Accept,Buy,POET,5,8.13,...,L,Oid:8911
+//   Execute,Buy,POET,5,7.98,...,L,Oid:8911        <- filled AT the offer
+//   Prepare Short:Positio:5, Sellholdqty:0, qty:5 <- POS guard saw the 5 shares
+//   Sending,Sell,POET,5,7.87,...,Oid:8916         <- side Sell, NOT Shrt
+//   Accept,Sell,POET,5,7.87,...,SLP:7.87 7.82     <- both SLP prices present
+//
+// All four defects confirmed fixed: montage reads populated, SLP carries two
+// prices, POS guard armed correctly, and the protective leg is a Sell against a
+// real long instead of a naked short.
+//
+// Realized risk 7.98 - 7.87 = 0.11 exactly. Worst case at the stop limit
+// 7.98 - 7.82 = 0.16, as documented.
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// KNOWN LIMITATION, visible in that log
+//
+// The stop is anchored to the ASK AT SIGNAL TIME, not to the fill. Here they
+// were the same price (7.98) so risk came out exact. They will not always be:
+// the entry is a marketable limit at ask + $entrySlip, so on a fast or wide
+// market it can fill anywhere up to 8.13 while the stop stays at 7.87. A fill
+// at the limit would make risk 0.26 -- 2.4x intended.
+//
+// $entrySlip is therefore your real slippage exposure, not a convenience knob.
+// Lower it and you risk not filling; raise it and the stop drifts from 11c.
+//
+// The fix is to read the actual fill back and re-anchor the stop to it. The
+// fill IS available -- GetOrderObj("Symb=" + $sym) returns the order, and the
+// Execute line proves DAS knows the price. What is NOT documented is the
+// property name holding it. Run this once and read the list:
+//
+//     GetOrderObj("Symb=POET").ShowObject();
+//
+// then re-anchor:  $trigger = Round($fillPx - $stopDist, 2);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ---- inputs ----------------------------------------------------------------
 $stopDist    = 0.11;    // stop distance in dollars
 $limitSlip   = 0.05;    // stop's limit sits this far through the trigger.
