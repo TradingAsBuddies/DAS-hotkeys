@@ -42,79 +42,58 @@ $riskDollars = 0;       // 0 = use the montage Share field.
                         //   28 / 0.11 = 254 -> 200 shares after even-lot rounding
                         //   75 / 0.11 = 681 -> 600 shares
 
-// ---- read state from the MONTAGE OBJECT ------------------------------------
-// NOT bare `ASK` / `SHARE` / `SYMBOL`. Bare property names bind to whatever
-// window happens to be FOCUSED when the hotkey fires, so they silently return
-// nothing when focus is on a chart -- and `SYMBOL` is not a montage property at
-// all (it belongs to the General Window Object; the montage list is BID ASK
-// L2BID L2ASK ISBBID ISBASK LAST HI LO OPEN PCL POS Price Share SSARE TOGSSARE
-// ROUTE DEFSHARE SHARECAP STOPTYPE STOPPRICE).
-//
-// The manual's own guidance, p.21: "In general, it may be better to use
-// GetWindowObj() to manipulate the objects rather than FocusWindow."
-//
-// Requires the montage to be NAMED flMontage (right-click its title bar) and
-// the desktop saved. See 01-fl-layout-build.das.
+// ---- read state - ALWAYS through $m, never bare ------------------------------
 $m = GetWindowObj("montage1");
 if (isObject($m) == 0) { MsgBox("ABORT: no window named montage1"); return; }
 
 $sym = $m.GetTicker();
-$px  = $m.BID;             // shorting, so reference the bid
+$px  = $m.BID;
 $qty = $m.Share;
 
 if ($sym == "") { MsgBox("ABORT: no symbol on montage"); return; }
 if ($px  == 0)  { MsgBox("ABORT: no BID on montage"); return; }
 
-// ---- sizing ----------------------------------------------------------------
-if ($riskDollars > 0) {
-  // precision 100 = round DOWN to even lots (das-hotkeys-guide.pdf p.26)
-  $qty = Round($riskDollars / $stopDist, 100);
-  if ($qty < 1) { MsgBox("ABORT: risk " + $riskDollars + " buys 0 shares"); return; }
-}
+if ($riskDollars > 0) { $qty = Round($riskDollars / $stopDist, 100); }
+if ($qty < 1) { MsgBox("ABORT: qty is " + $qty); return; }
 
-if ($qty < 1) { MsgBox("ABORT: montage Share is " + $qty); return; }
-
-// ---- prices ----------------------------------------------------------------
+// ---- prices - $px, not BID ---------------------------------------------------
 $entry   = Round($px - $entrySlip, 2);       // marketable limit, downside
-$trigger = Round($px + $stopDist, 2);        // 11 cents ABOVE
-$limit   = Round($trigger + $limitSlip, 2);  // limit sits ABOVE the trigger
-
-// ---- confirm ---------------------------------------------------------------
-$maxLoss = Round($qty * ($stopDist + $limitSlip), 2);
+$trigger = Round($px + $stopDist, 2);        // stop fires 11c ABOVE
+$limit   = Round($trigger + $limitSlip, 2);  // accept fills up to here
 
 MsgBox("SHORT " + $qty + " " + $sym + "\n" +
        "entry   " + $entry + "\n" +
        "stop    " + $trigger + "  (+" + $stopDist + ")" + "\n" +
        "limit   " + $limit + "\n" +
-       "risk    " + Round($qty * $stopDist, 2) + " at trigger" + "\n" +
-       "worst   " + $maxLoss + " at limit");
+       "worst   " + Round($qty * ($stopDist + $limitSlip), 2) + " if filled at limit");
 
-// ---- send ------------------------------------------------------------------
-// SS = short. DAS converts Sell vs Short appropriately, so the COVER leg is a
-// plain B — you do not work out whether it is a buy-to-cover.
+// ---- send entry --------------------------------------------------------------
 NewOrderObj("SS " + $qty + " " + $sym + " L " + $entry + " D+").Send();
-Wait(1100);                                  // one Send() per second, always
+Wait(1100);                                  // one Send() per second
 
-// ---- ARM THE STOP ONLY AGAINST A REAL POSITION -------------------------------
-// Mirror of the guard in 07. A bare `B` cover leg fired with no short under it
-// does not fail safe -- it opens a LONG. Same class of bug that produced
-// "Accept,Shrt,POET,5" from a buy script on 2026-09-08.
+// ---- ARM THE COVER ONLY AGAINST A REAL POSITION ------------------------------
+// Mirror of the guard in 07, and the same class of bug it prevents: a bare `B`
+// cover fired with nothing short under it does not fail safe -- it opens a LONG.
 //
-// POS is negative when short, so the test is on the magnitude.
+// SIGN CONVENTION IS UNVERIFIED. The 07 fill logged "Positio:5" for a 5-share
+// LONG. What POS reports for a SHORT -- -5, or 5 -- has not been observed. So
+// this guards on MAGNITUDE, which is correct under either convention: if you
+// are flat, nothing is sent. Tighten it to `if ($pos > -1)` only after you have
+// confirmed POS goes negative on a short.
 $pos = $m.POS;
-if ($pos > -1) {
+$sz  = Abs($pos);
+
+if ($sz < 1) {
   MsgBox("NO STOP SENT" + "\n" +
          "short has not filled (POS=" + $pos + ")" + "\n\n" +
-         "You are UNPROTECTED. Cancel the entry, or arm the" + "\n" +
-         "stop manually once it fills.");
+         "You are UNPROTECTED. Cancel the entry, or run" + "\n" +
+         "the ARM COVER hotkey once it fills.");
   MsgLog("SHORT ", $sym, " entry sent, unfilled after 1.1s - no stop armed");
   return;
 }
 
-$cover = Abs($pos);      // size the cover to what actually filled
-NewOrderObj("B " + $cover + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
-
-MsgLog("SHORT ", $sym, " qty=", $cover, " entry=", $entry, " stop=", $trigger, "/", $limit);
+NewOrderObj("B " + $sz + " " + $sym + " SLP " + $trigger + " " + $limit + " D+").Send();
+MsgLog("SHORT ", $sym, " qty=", $sz, " entry=", $entry, " stop=", $trigger, "/", $limit);
 
 
 // ============================================================================
