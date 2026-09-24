@@ -12,8 +12,11 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 
 | Path | |
 |---|---|
-| `scripts/` | Seven `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry |
+| `scripts/` | Ten `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry |
 | `docs/WISDOM.md` | What the 20 official DAS manuals actually say about scripting, with page citations |
+| `docs/DEFAULT-DESKTOP.md` | The base layer: `montage1` and `hidden_chart1`, named from script |
+| `docs/CMD-API-TESTING.md` | Driving and observing hotkey scripts from Python over the CMD API |
+| `tools/das_script_test.py` | The harness: inject script, read DAS's log, clear error dialogs, fetch bars |
 | `docs/DESKTOP-FASHIONABLY-LATE.md` | Desktop design + build order for the Fashionably Late setup |
 | `docs/manuals/MANIFEST.md` | Every official DAS manual with its source URL |
 | `backtest/` | 3-year, 1-minute backtest of the FL signal |
@@ -29,6 +32,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `04-fl-hotkeys.das` | one hotkey per block |
 | `05-fl-cst-test.das` | two throwaway hotkeys, run once by hand |
 | `06-entry-with-slp-stop.das` | two hotkeys — long entry and short entry, each with a 1.5×ATR stop-limit |
+| `10-ensure-default-desktop.das` | three hotkeys — A creates/names `montage1` and `hidden_chart1` if missing, B verifies, C un-hides. See `docs/DEFAULT-DESKTOP.md` |
 
 ## Things that cost time to learn
 
