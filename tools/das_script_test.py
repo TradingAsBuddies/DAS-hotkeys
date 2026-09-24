@@ -17,8 +17,12 @@ docs/CMD-API-TESTING.md for the evidence.
 Connection facts (CLAUDE.md): DAS binds loopback; host/port come from
 ~/.claude/.env (DAS_HOST, DAS_PORT, DAS_USER, DAS_PASSWORD, DAS_ACCOUNT) with
 inline " #" comments stripped. The port is cross-checked against DAS's own
-Config.cfg so drift is reported, never guessed. Login is WATCH mode (flag 1):
-this connection can never place an order via NEWORDER.
+Config.cfg so drift is reported, never guessed. Login is WATCH mode (flag 1),
+which blocks the socket's own NEWORDER command and nothing else: text injected
+with SCRIPT runs inside DAS under whatever account DAS itself is logged into.
+The only order guard for injected text is the refusal list in cmd_check and
+your own discipline in `run`. Never inject order code outside the paper
+round trip described in docs/CMD-API-TESTING.md.
 """
 
 from __future__ import annotations
@@ -98,6 +102,7 @@ class DAS:
             print(f"WARNING: .env DAS_PORT={self.port} but Config.cfg says {cp}; "
                   f"DAS is listening on {cp}", file=sys.stderr)
         self.sock: socket.socket | None = None
+        self.last_errors: list[str] = []
 
     def connect(self) -> "DAS":
         try:
@@ -180,12 +185,17 @@ class DAS:
         leaves `$w` unset."""
         tag = tag or f"dst{int(time.time() * 1000) % 10_000_000}"
         bind = "" if window == "GLOBALSCRIPT" else f'$w = GetWindowObj("{window}"); '
+        cur = LogCursor()
         self.script(window, f'{bind}MsgLog("{tag}=", {expr});', 0.6)
         val = read_log_value(tag, tries=3)
+        # Runtime errors (ScriptError:1, e.g. a bad property name) are logged at
+        # once and do not block; DAS then logs the object's type string as the
+        # "value". Parse errors (ScriptError:100) block until dismissed.
+        self.last_errors = [l for l in cur.new_lines(("Error",))]
         if val is None:
-            errs = dismiss_errors()
-            for e in errs:
-                print("SCRIPT ERROR:", e, file=sys.stderr)
+            self.last_errors += dismiss_errors()
+        for e in self.last_errors:
+            print("SCRIPT ERROR:", e, file=sys.stderr)
         return val
 
 
@@ -204,8 +214,8 @@ def read_log_value(tag: str, tries: int = 6) -> str | None:
 
 class LogCursor:
     """Remember where today's log ends now; later, return only what DAS
-    appended. Byte offsets, not timestamps: the WSL clock and DAS's log
-    stamps were 54 minutes apart on 2026-09-24."""
+    appended. Byte offsets, not timestamps: DAS stamps with its own
+    server-synced clock and WSL's clock has been seen 54 minutes off it."""
 
     def __init__(self):
         self.path = log_file()
@@ -217,11 +227,16 @@ class LogCursor:
         with self.path.open("rb") as fh:
             fh.seek(self.offset)
             tail = fh.read().decode(errors="replace")
-        out = []
+        out: list[str] = []
+        keep = False
         for line in tail.splitlines():
             parts = line.split(",", 2)
-            if len(parts) == 3 and (not kinds or parts[1] in kinds):
-                out.append(line.rstrip())
+            if len(parts) == 3 and parts[1] in ("Log", "Error", "CMDAPILog"):
+                keep = not kinds or parts[1] in kinds
+                if keep:
+                    out.append(line.rstrip())
+            elif keep and out:                       # continuation of a multi-line MsgLog
+                out[-1] += "\n" + line.rstrip()
         return out
 
 
@@ -235,10 +250,18 @@ mains = [w for w in d.windows() if "DASTrader" in w.window_text()]
 if not mains: print("no DAS main window"); sys.exit(0)
 main = mains[0]; n = 0; seen = []
 for _ in range(25):
+    # (a) ScriptError:100 parse dialog; (b) DAS MsgBox, a child Window titled "Message"
     errs = [c for c in main.descendants(control_type="Text") if "ScriptError" in c.window_text()]
-    if not errs: break
-    e = errs[0]; seen.append(e.window_text())
-    oks = [b for b in e.parent().descendants(control_type="Button") if b.window_text() == "OK"]
+    boxes = [c for c in main.descendants(control_type="Window", depth=2) if c.window_text() == "Message"]
+    if errs:
+        e = errs[0]; seen.append(e.window_text()); host = e.parent()
+    elif boxes:
+        b = boxes[0]
+        txt = " | ".join(t.window_text() for t in b.descendants(control_type="Text") if t.window_text())
+        seen.append("MsgBox: " + txt[:200]); host = b
+    else:
+        break
+    oks = [b for b in host.descendants(control_type="Button") if b.window_text() == "OK"]
     if not oks: print("no OK button"); break
     oks[0].invoke(); n += 1; time.sleep(0.5)
 for t in seen: print("DISMISSED:", t)
@@ -298,7 +321,10 @@ def cmd_exists(das: DAS, a) -> int:
 
 def cmd_run(das: DAS, a) -> int:
     cur = LogCursor()
-    das.script(a.window, a.script, 1.0)
+    text = re.sub(r"\bMsgBox\(", "MsgLog(", a.script)   # a modal would freeze the API
+    if text != a.script:
+        print("note: MsgBox rewritten to MsgLog before injection", file=sys.stderr)
+    das.script(a.window, text, 1.0)
     time.sleep(0.6)
     # The Error line is written only when its dialog closes, so always try to
     # close one; this is also what un-freezes the API if the script failed.
@@ -312,13 +338,13 @@ def cmd_run(das: DAS, a) -> int:
 def cmd_eval(das: DAS, a) -> int:
     v = das.eval(a.window, a.expr)
     print(v if v is not None else "(no value logged; script error? run `dismiss`)")
-    return 0 if v is not None else 1
+    return 0 if v is not None and not das.last_errors else 1
 
 
 def cmd_study(das: DAS, a) -> int:
     v = das.eval(a.window, f'$w.GetStudyVal("{a.study}")')
-    print(f"{a.window}.{a.study} = {v}")
-    return 0 if v not in (None, "0") else 1
+    print(f"{a.window}.{a.study} = {v}" + ("   (0 = study missing, misnamed, or not warmed up)" if v == "0" else ""))
+    return 0 if v not in (None, "0") and not das.last_errors else 1
 
 
 ORDER_TOKENS = re.compile(r"(\bBUY\b|\bSELL\b|\bSS\b|\bCXL\b|\bPanic\b|\bSend\s*\(|\.Send\b|NewOrderObj|"
@@ -363,7 +389,8 @@ def cmd_check(das: DAS | None, a) -> int:
     # Joined into one line: DAS reports every error as Line:1, so the source line
     # must be found from the quoted text in the error, not from N.
     cur = LogCursor()
-    das.script(a.window, " ".join(code_lines), 1.5)
+    text = re.sub(r"\bMsgBox\(", "MsgLog(", " ".join(code_lines))   # a modal would freeze the API
+    das.script(a.window, text, 1.5)
     time.sleep(1.0)
     errs = dismiss_errors()
     for line in cur.new_lines():
@@ -376,9 +403,8 @@ def cmd_check(das: DAS | None, a) -> int:
 
 
 def cmd_bars(das: DAS, a) -> int:
-    start = (datetime.now().replace(second=0, microsecond=0))
-    start = start.replace(minute=0) if a.minutes >= 60 else start
-    das.send(f"SB {a.symbol} MINCHART {start:%Y/%m/%d}-00:00 LATEST {a.mintype}")
+    today = datetime.now()
+    das.send(f"SB {a.symbol} MINCHART {today:%Y/%m/%d}-00:00 LATEST {a.mintype}")
     text = das.drain(4.0)
     das.send(f"UNSB {a.symbol} MINCHART")
     bars = sorted(l for l in text.splitlines() if l.startswith("$Bar "))

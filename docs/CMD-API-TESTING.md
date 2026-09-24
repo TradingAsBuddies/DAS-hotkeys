@@ -1,8 +1,10 @@
 # Testing hotkey scripts through the CMD API
 
 How to drive, observe, and lint DAS hotkey scripts from WSL without touching the keyboard.
-Everything below was verified live on 2026-09-24 against DAS 5.8.x (Cobra build) on the
-TR4425 paper account. The harness is `tools/das_script_test.py`.
+Verified live on 2026-09-24 against DAS 5.8.x (Cobra build) on the TR4425 paper account.
+Claims marked **(log)** are backed by lines in that day's DAS log file; claims marked
+**(socket)** were observed in socket replies, which DAS does not log. The harness is
+`tools/das_script_test.py`.
 
 ## The source that made this possible
 
@@ -20,18 +22,23 @@ default desktop carries `montage1` and `hidden_chart1`: they are the two address
 
 | Channel | What it gives you | Verified how |
 |---|---|---|
-| `SCRIPT <window> <text>` | Executes script in that window's context. `$variables`, `if`, object access all work. | `$dst_v = 42; MsgLog("dst var=", $dst_v);` produced `Log,dst var=42` within the same second. |
-| `SCRIPT <name> …` reply | **Existence oracle.** Unknown name → `Wrong command, window name X does not exist!` Known name → silence. Names are case-insensitive. | `montage1`, `Montage1`, `MONTAGE1` all answered the same way. |
+| `SCRIPT <window> <text>` | Executes script in that window's context. `$variables`, `if`, object access all work. | **(log)** `$dst_v = 42; MsgLog("dst var=", $dst_v);` produced `Log,dst var=42` within the same second. |
+| `SCRIPT <name> …` reply | **Existence oracle.** Unknown name → `Wrong command, window name X does not exist!` Known name → silence. Names are case-insensitive. | **(socket)** for the reply text. **(log)** for case: `Hidden_Chart1` and `HIDDEN_CHART1` both logged their `MsgLog` while `hidden_chart1` was the saved name. |
 | `C:\Cobra Trading_x64\LOG\YYMMDDLog.txt` | **The event log as a file.** Every API command (`CMDAPILog`), every `MsgLog` (`Log`), every script error (`Error`). | Grep it from `/mnt/c/...`. This is the read channel; the socket never returns script output. |
-| `MsgLog("tag=", expr)` + log grep | **Value return.** Read any property or function result out of a window. | `$w.BID` → `763.76`; `GetTicker()` on `hidden_chart1` → `SPY`. |
-| `SB symbol MINCHART … LATEST 1` | Minute bars, plus `Lv1` quotes and `DAYCHART`. Ground truth to compare against what a script computes. | 379 `$Bar` lines for SPY in one call. |
+| `MsgLog("tag=", expr)` + log grep | **Value return.** Read any property or function result out of a window. | **(log)** `$w.BID` → `763.76`; `GetTicker()` on `hidden_chart1` → `SPY`. |
+| `SB symbol MINCHART … LATEST 1` | Minute bars, plus `Lv1` quotes and `DAYCHART`. Ground truth to compare against what a script computes. | **(socket)** 379 `$Bar` lines for SPY in one call. |
 
 ## The one thing that bites
 
-**A script error opens a modal dialog in DAS, and that dialog freezes the CMD API thread.**
-Every command sent while it is up is queued; when the dialog closes they are logged in a burst
-with the closing timestamp and none of them run. Symptoms: subscriptions return nothing,
-`exists` checks hang, the log stops.
+DAS has two kinds of script error, and only one of them is dangerous:
+
+| Error | Example | What happens |
+|---|---|---|
+| `ScriptError:100` (parse) | a single quote, `$x = ;` | **A modal dialog opens and the CMD API thread freezes.** Every command sent while it is up is queued and never runs; their log stamps vary. The `Error` line is written only when the dialog closes. **(log)** |
+| `ScriptError:1` (runtime) | `$w.NoSuchProp` | Logged immediately, no dialog, execution continues, and the "value" that follows is the object's type string such as `Obj:TradeWindowObject`. **(log)** |
+
+Symptoms of the frozen state: subscriptions return nothing, logins get an empty reply,
+`exists` gets no reply and no log line (the harness raises rather than guessing).
 
 The socket never reports the error. The only way to see it is the dialog text, and the only
 way to clear it programmatically is Windows UI Automation:
@@ -48,11 +55,17 @@ because the `Error` line is only written to the log at the moment the dialog clo
 
 ## Small behaviours worth knowing
 
-- **Unknown property reads do not error.** `eval montage1 '$w.NoSuchProp'` returned
-  `Obj:TradeWindowObject`, the object's own type string. A typo in a property name looks
-  like a value. `GetWindowTitle()` on a montage returns the same string, not the title bar.
+- **A typo in a property name is a runtime error that still returns a value.** `eval
+  montage1 '$w.NoSuchProp'` logged `ScriptError:1 … Properity NoSuchProp not exist!` and
+  then `Obj:TradeWindowObject`. The harness prints the error and exits 1. `GetWindowTitle()`
+  on a montage returns that same type string, not the title bar. **(log)**
+- **`study hidden_chart1 atr` returns 0 on the current desktop** because no studies have
+  been added to the hidden chart yet. 0 means missing, misnamed, or not warmed up.
 - **Single quotes inside `//` comments survived a live run** of `00`, whose three quoted
   comments were stripped by the harness before injection. The rule stands for code.
+- **`run` rewrites `MsgBox(` to `MsgLog(` before injecting**, because a MsgBox is a modal
+  and would freeze the API the way a parse error does. That freeze is inferred, not yet
+  observed: no MsgBox has been injected.
 - **`check --live` on `00` printed both of its startup messages** (`FL desktop loaded.`,
   `desktop-load: montage1 and hidden_chart1 present`), so a Desktop Load Script can be
   exercised on demand without restarting DAS.
@@ -61,8 +74,9 @@ because the `Error` line is only written to the log at the moment the dialog clo
 
 - **`Shell` through `SCRIPT`.** Logged, executes nothing, writes no file. Do not plan on a
   file-based return channel; use `MsgLog`.
-- **Timestamps.** The WSL clock and DAS's log stamps were 54 minutes apart. The harness
-  uses a byte offset into the log file, never the clock.
+- **Timestamps.** DAS stamps the log with its own server-synced clock; the WSL clock has
+  been seen 54 minutes off it. The harness uses a byte offset into the log file, never
+  the clock.
 - **UIA reading the Event Log pane.** It exposes no text. Read the file instead.
 - **`GetWindowObj()` with no argument** returned the montage, not the chart that was created
   last, and during HOTKEY A it returned nothing at all until a `Wait(500)`. Treat it as
@@ -89,15 +103,20 @@ because the `Error` line is only written to the log at the moment the dialog clo
 
 ## Paper-account order round trip (designed, not yet run)
 
-The harness logs in as a **watch** connection and has no order path by design. When order
-scripts (`06`/`07`/`08`) need live testing on TR4425:
+**Watch mode protects one thing only:** the socket's own `NEWORDER` command. Text injected
+with `SCRIPT` runs inside DAS under whatever account DAS is logged into, and neither the
+watch flag nor the harness's `DAS_ACCOUNT` check can stop it. The refusal list in
+`check --live` and your own discipline in `run` are the only guards. When order scripts
+(`06`/`07`/`08`) need live testing on TR4425:
 
 1. Inject the script with a far-off limit, e.g. `Price` 30% below `BID`, so nothing fills.
 2. Read `%ORDER` / `%OrderAct` lines from the socket: id, side, price, route, status.
 3. `CANCEL <id>` over the same socket (needs a normal login, flag `0`).
 4. Confirm `%OrderAct … Canceled` and that `%POS` is unchanged.
 
-Only TR4425. The harness refuses to run if `DAS_ACCOUNT` is anything else.
+Only TR4425. The harness refuses to run if `DAS_ACCOUNT` is anything else, and the DAS
+log's first line (`Login to OrderServer Successful!`) is where to confirm which session DAS
+itself is in before any order test.
 
 ## Other things found along the way
 
