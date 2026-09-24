@@ -1,0 +1,8 @@
+{"event": "skip", "sym": "MU", "reason": "BANNED_TICKERS", "wall": "2026-09-24T08:18:36"}
+{"event": "start", "date": "2026-09-24", "symbols": ["SPY", "INTC", "IONQ", "XLE", "CRWD", "XOM", "DELL", "TSLA", "BB", "DRI", "META", "MSTR", "GRML", "QQQ"], "risk": 250.0, "gate": "09:45", "eod": "15:55", "dry_run": true, "bp": "BP 500000.00 250000.00", "wall": "2026-09-24T08:18:36"}
+{"event": "skip", "sym": "MU", "reason": "BANNED_TICKERS", "wall": "2026-09-24T08:21:23"}
+{"event": "start", "date": "2026-09-24", "symbols": ["SPY", "INTC", "IONQ", "XLE", "CRWD", "XOM", "DELL", "TSLA", "BB", "DRI", "META", "MSTR", "GRML", "QQQ"], "risk": 250.0, "gate": "09:45", "eod": "15:55", "dry_run": true, "bp": "BP 500000.00 250000.00", "wall": "2026-09-24T08:21:23"}
+{"event": "signal", "sym": "IONQ", "side": "SHORT", "market": "07:30:36", "t": "2026/09/24-07:28", "close": 41.18, "ema9": 41.2558, "sma34": 41.2576, "atr": 0.0437, "vnow": 4009.0, "avgv": 2374.9, "cross": -1, "volok": true, "wall": "2026-09-24T08:23:27"}
+{"event": "suppress", "sym": "IONQ", "reason": "before gate", "market": "07:30:36", "wall": "2026-09-24T08:23:27"}
+{"event": "signal", "sym": "QQQ", "side": "SHORT", "market": "07:30:36", "t": "2026/09/24-07:29", "close": 734.138, "ema9": 734.3366, "sma34": 734.3871, "atr": 0.2144, "vnow": 20769.0, "avgv": 7747.2, "cross": -1, "volok": true, "wall": "2026-09-24T08:23:27"}
+{"event": "suppress", "sym": "QQQ", "reason": "before gate", "market": "07:30:36", "wall": "2026-09-24T08:23:27"}

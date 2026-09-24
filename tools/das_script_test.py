@@ -251,17 +251,22 @@ if not mains: print("no DAS main window"); sys.exit(0)
 main = mains[0]; n = 0; seen = []
 for _ in range(25):
     # (a) ScriptError:100 parse dialog; (b) DAS MsgBox, a child Window titled "Message"
+    # (a) ScriptError:100 parse dialog; (b) DAS MsgBox, a child Window titled "Message";
+    # (c) any other notice: a child Window whose only buttons are OK/Close (seen for
+    #     "PANIC can only run in market hours!", titled like the main window).
     errs = [c for c in main.descendants(control_type="Text") if "ScriptError" in c.window_text()]
-    boxes = [c for c in main.descendants(control_type="Window", depth=2) if c.window_text() == "Message"]
+    host = None
     if errs:
         e = errs[0]; seen.append(e.window_text()); host = e.parent()
-    elif boxes:
-        b = boxes[0]
-        txt = " | ".join(t.window_text() for t in b.descendants(control_type="Text") if t.window_text())
-        seen.append("MsgBox: " + txt[:200]); host = b
     else:
+        for c in main.descendants(control_type="Window", depth=3):
+            names = [b.window_text() for b in c.descendants(control_type="Button", depth=3)]
+            if names and set(names) <= {"OK", "Close", "Yes"} and len(names) <= 3:
+                txt = " | ".join(t.window_text() for t in c.descendants(control_type="Text") if t.window_text())
+                seen.append(f"{c.window_text()[:30]}: {txt[:200]}"); host = c; break
+    if host is None:
         break
-    oks = [b for b in host.descendants(control_type="Button") if b.window_text() == "OK"]
+    oks = [b for b in host.descendants(control_type="Button") if b.window_text() in ("OK", "Yes", "Close")]
     if not oks: print("no OK button"); break
     oks[0].invoke(); n += 1; time.sleep(0.5)
 for t in seen: print("DISMISSED:", t)
