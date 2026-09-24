@@ -40,8 +40,8 @@ Two things that manifest records and you should not rediscover the hard way:
   `/mnt/c/Python314/python.exe` + pywinauto does that); the live port is
   `CMDAPI:PORT:<n>` in `C:\Cobra Trading_x64\Config.cfg`. Harness:
   `tools/das_script_test.py`.
-- **Grep `docs/text/`, never the PDFs.** All 20 are extracted to plain text there (373K chars)
-  with `===== [file p.N] =====` page markers, via `pypdf`. poppler-utils is not installed and
+- **Grep `docs/text/`, never the PDFs.** Whatever has been fetched is extracted to plain text
+  there with `===== [file p.N] =====` page markers, via `pypdf` (4 of 20 as of 2026-09-24). poppler-utils is not installed and
   is not needed.
 - **Both `docs/manuals/*.pdf` and `docs/text/` are gitignored** (DAS copyright), so a fresh
   clone has neither. Where the manuals live:

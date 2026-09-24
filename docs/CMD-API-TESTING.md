@@ -43,8 +43,8 @@ Desktop(backend="uia") → DAS main window → descendants(control_type="Text") 
 ```
 
 `click_input()` does not work on that dialog; `.invoke()` does. `tools/das_script_test.py
-dismiss` wraps this, and `run` / `check` call it automatically when an `Error` line appears.
-The error text is also written to the log at the moment of dismissal, so you get it twice.
+dismiss` wraps this, and `run` / `check --live` call it unconditionally after every injection,
+because the `Error` line is only written to the log at the moment the dialog closes.
 
 ## Small behaviours worth knowing
 
@@ -74,14 +74,18 @@ The error text is also written to the log at the moment of dismissal, so you get
    `&&`/`||`, the two things DAS rejects outright.
 2. **Preconditions.** `exists montage1 hidden_chart1` before anything else. The oracle is
    free and it is the failure mode that looks like everything else.
-3. **Inject.** `run <window> '<script>'` or `check --live`, which strips every order-sending
-   line before injecting so a syntax pass never places an order.
+3. **Inject.** `run <window> '<script>'` for a snippet, or `check --live` to execute a whole
+   file. Live mode is refused for any file whose code contains `BUY`, `SELL`, `SS`, `CXL`,
+   `Send(`, `NewOrderObj`, `Panic`, `SwitchDesktop` or `ClearDesktop`: `SCRIPT` executes
+   inside DAS, so there is no such thing as a dry run of an order script. Those get the
+   paper-account round trip below.
 4. **Observe.** New `Log` and `Error` lines print. `eval <window> '<expr>'` reads back any
    value a script would have used: `$w.BID`, `$w.POS`, `$w.GetStudyVal("atr")`.
 5. **Assert against ground truth.** `bars SPY` gives the same minutes the chart is drawing
    from; compare a script's `GetBar(-1).Close` against the last `$Bar`.
-6. **Clean up.** If an `Error` line appeared, the dialog is already dismissed; fix the line
-   it names (`Line:N` counts from the start of the injected text).
+6. **Clean up.** If an `Error` line appeared, the dialog is already dismissed. The file is
+   injected as one line, so `Line:N` is always 1; find the source line from the quoted
+   fragment after `Error at:`.
 
 ## Paper-account order round trip (designed, not yet run)
 

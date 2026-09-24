@@ -10,7 +10,7 @@ docs/CMD-API-TESTING.md for the evidence.
     das_script_test.py run GLOBALSCRIPT 'MsgLog("hi");'
     das_script_test.py eval montage1 '$w.BID'         # prints the value
     das_script_test.py study hidden_chart1 atr        # GetStudyVal by name
-    das_script_test.py check scripts/06-entry-with-slp-stop.das
+    das_script_test.py check scripts/00-fl-desktop-load.das --live
     das_script_test.py bars SPY --minutes 30
     das_script_test.py dismiss
 
@@ -76,6 +76,9 @@ def config_port() -> int | None:
 def log_file(day: datetime | None = None) -> Path:
     """DAS writes LOG/YYMMDDLog.txt: every CMD API command (CMDAPILog), every
     MsgLog (Log), every script error (Error, stamped when its dialog closes)."""
+    logs = sorted((das_dir() / "LOG").glob("*Log.txt"), key=lambda p: p.stat().st_mtime)
+    if logs:
+        return logs[-1]                      # newest, whatever DAS thinks the date is
     day = day or datetime.now()
     return das_dir() / "LOG" / f"{day:%y%m%d}Log.txt"
 
@@ -126,18 +129,27 @@ class DAS:
         end = time.time() + seconds
         while time.time() < end:
             try:
-                buf += self.sock.recv(65536)
+                chunk = self.sock.recv(65536)
             except socket.timeout:
-                pass
+                continue
+            except OSError as exc:
+                raise NoConnection(f"socket error mid-session: {exc}")
+            if not chunk:                      # peer closed: connection, not data
+                raise NoConnection("DAS closed the connection")
+            buf += chunk
         return buf.decode(errors="replace")
 
     def close(self) -> None:
         if self.sock:
             try:
                 self.send("QUIT")
+            except OSError:
+                pass
+            try:
                 self.sock.close()
-            finally:
-                self.sock = None
+            except OSError:
+                pass
+            self.sock = None
 
     # ── script primitives ────────────────────────────────────────────────
 
@@ -151,8 +163,16 @@ class DAS:
     def exists(self, window: str) -> bool:
         """Existence oracle: DAS answers
         'Wrong command, window name X does not exist!' for unknown names."""
+        cur = LogCursor()
         reply = self.script(window, f'MsgLog("das_script_test exists {window}");', 0.6)
-        return "does not exist" not in reply
+        if "does not exist" in reply:
+            return False
+        for _ in range(5):
+            if any(f",Log,das_script_test exists {window}" in l for l in cur.new_lines()):
+                return True
+            time.sleep(0.3)
+        raise RuntimeError(f"no answer for {window}: DAS did not reply or log; "
+                           f"a ScriptError dialog may be freezing the API (run `dismiss`)")
 
     def eval(self, window: str, expr: str, tag: str | None = None) -> str | None:
         """Evaluate an expression inside a window and read the value back
@@ -194,9 +214,9 @@ class LogCursor:
     def new_lines(self, kinds: tuple[str, ...] = ("Log", "Error")) -> list[str]:
         if not self.path.exists():
             return []
-        with self.path.open("r", errors="replace") as fh:
+        with self.path.open("rb") as fh:
             fh.seek(self.offset)
-            tail = fh.read()
+            tail = fh.read().decode(errors="replace")
         out = []
         for line in tail.splitlines():
             parts = line.split(",", 2)
@@ -250,7 +270,15 @@ def dismiss_errors() -> list[str]:
     tmp = Path("/mnt/c/Users") / win_user() / "das_dismiss_tmp.py"
     tmp.write_text(DISMISS_SRC)
     win_path = subprocess.run(["wslpath", "-w", str(tmp)], capture_output=True, text=True).stdout.strip()
-    res = subprocess.run([WIN_PY, win_path], capture_output=True, text=True, timeout=120)
+    if not win_path:
+        raise RuntimeError("wslpath failed; cannot hand the dismiss script to Windows Python")
+    try:
+        res = subprocess.run([WIN_PY, win_path], capture_output=True, text=True, timeout=120,
+                             stdin=subprocess.DEVNULL)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Windows Python did not return in 120 s; dialog state unknown")
+    if res.returncode != 0:
+        raise RuntimeError("dismiss failed on the Windows side: " + res.stderr.strip()[-300:])
     out = res.stdout.strip()
     if out:
         print(out)
@@ -293,11 +321,19 @@ def cmd_study(das: DAS, a) -> int:
     return 0 if v not in (None, "0") else 1
 
 
-def cmd_check(das: DAS, a) -> int:
-    """Static lint (repo rules) then optional live syntax check by injecting
-    each block with its order-sending lines stripped."""
+ORDER_TOKENS = re.compile(r"(\bBUY\b|\bSELL\b|\bSS\b|\bCXL\b|\bPanic\b|\bSend\s*\(|\.Send\b|NewOrderObj|"
+                          r"\bSwitchDesktop\b|\bClearDesktop\b)", re.I)
+
+
+def cmd_check(das: DAS | None, a) -> int:
+    """Static lint (repo rules). With --live, EXECUTE the whole file inside DAS
+    and report Log/Error lines. Live mode refuses any file whose code contains
+    an order-sending or desktop-wiping token: SCRIPT runs inside DAS, so the
+    watch-mode login is no protection. Order scripts get the paper-account
+    round trip described in docs/CMD-API-TESTING.md instead."""
     src = Path(a.file).read_text()
-    problems, warnings = [], []
+    problems, warnings, forbidden = [], [], []
+    code_lines = []
     for i, line in enumerate(src.splitlines(), 1):
         code = line.split("//", 1)[0]
         if "'" in code:
@@ -306,6 +342,11 @@ def cmd_check(das: DAS, a) -> int:
             warnings.append(f"{i}: single quote in a comment (00 ran live with these; keep them out anyway)")
         if "&&" in code or "||" in code:
             problems.append(f"{i}: && or || (nest ifs)")
+        m = ORDER_TOKENS.search(code)
+        if m:
+            forbidden.append(f"{i}: {m.group(0)}")
+        if code.strip():
+            code_lines.append(code.strip())
     print(f"static: {len(problems)} problem(s), {len(warnings)} warning(s)")
     for p in problems:
         print("   PROBLEM", p)
@@ -313,13 +354,16 @@ def cmd_check(das: DAS, a) -> int:
         print("   warn   ", w)
     if not a.live:
         return 1 if problems else 0
-    safe = re.sub(r"^\s*.*\b(BUY|SELL|SS|Send\(|NewOrderObj)\b.*$", "// [stripped by das_script_test]",
-                  src, flags=re.M | re.I)
-    # a MsgBox is a modal: it would freeze the API exactly like a script error
-    safe = re.sub(r"\bMsgBox\(", "MsgLog(", safe)
-    one_line = " ".join(l.split("//", 1)[0].strip() for l in safe.splitlines() if l.split("//", 1)[0].strip())
+    if forbidden:
+        print("LIVE REFUSED: file contains order or desktop commands, which SCRIPT would execute:")
+        for f in forbidden:
+            print("   ", f)
+        return 3
+    assert das is not None
+    # Joined into one line: DAS reports every error as Line:1, so the source line
+    # must be found from the quoted text in the error, not from N.
     cur = LogCursor()
-    das.script(a.window, one_line, 1.5)
+    das.script(a.window, " ".join(code_lines), 1.5)
     time.sleep(1.0)
     errs = dismiss_errors()
     for line in cur.new_lines():
@@ -327,7 +371,7 @@ def cmd_check(das: DAS, a) -> int:
     if errs:
         print(f"LIVE: {len(errs)} script error(s)")
         return 1
-    print("LIVE: no script error dialog")
+    print("LIVE: ran to completion with no script error dialog")
     return 1 if problems else 0
 
 
@@ -358,7 +402,7 @@ def main() -> int:
     p = sub.add_parser("run", help="inject script, print new Log/Error lines"); p.add_argument("window"); p.add_argument("script")
     p = sub.add_parser("eval", help="evaluate an expression, $w = window"); p.add_argument("window"); p.add_argument("expr")
     p = sub.add_parser("study", help="GetStudyVal on a named chart"); p.add_argument("window"); p.add_argument("study")
-    p = sub.add_parser("check", help="lint a .das file; --live injects it (orders stripped)")
+    p = sub.add_parser("check", help="lint a .das file; --live executes it (refused if it contains order code)")
     p.add_argument("file"); p.add_argument("--live", action="store_true"); p.add_argument("--window", default="GLOBALSCRIPT")
     p = sub.add_parser("bars", help="minute bars via SB MINCHART"); p.add_argument("symbol")
     p.add_argument("--minutes", type=int, default=10); p.add_argument("--mintype", type=int, default=1)
