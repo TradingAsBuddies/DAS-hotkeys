@@ -175,8 +175,9 @@ if ($FL_USE_CST == 1) {
 // coil signal on its own.
 //
 // Requires a daily chart named flChartD with a study named dailyEMA200.
-// Commented out until you add that window — GetWindowObj on a missing name
-// will error every update.
+// Commented out until you add that window. (Verified 2026-09-20 via
+// 10-ensure-default-desktop.das: GetWindowObj on a missing name returns a
+// non-object rather than erroring, so the isObject guard below is sufficient.)
 //
 // $flD = GetWindowObj("flChartD");
 // if (isObject($flD) == 1) {

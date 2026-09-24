@@ -60,6 +60,7 @@ This is the single most important line in the corpus for your montage and chart 
 - Montage exposes `BID ASK L2BID L2ASK ISBBID ISBASK LAST HI LO OPEN PCL POS Price Share SSARE TOGSSARE ROUTE DEFSHARE SHARECAP STOPTYPE STOPPRICE`. Read *and* write — setting `.PRICE`, `.share`, `.route` then calling `.BUY` sends an order.
 - `FocusWindow name` is the crude alternative: force focus, then run unqualified commands against whatever is focused. The manual quietly tells you not to prefer it — *"it may be better to use GetWindowObj() to manipulate the objects rather than FocusWindow."*
 - Window names survive restart **only if you save the desktop afterward**. Otherwise your Desktop Load Script references a name that no longer exists.
+- **Verified on David's build 2026-09-20** (`scripts/10-ensure-default-desktop.das`): `GetWindowObj()` immediately after `NewWindow` returned nothing (`ScriptError:100 Missing Object`), the manual's p.13 two-liner notwithstanding; `Wait(500)` between them is required. `GetWindowObj("missing")` returns a non-object with no script error, so `if (isObject($w) == 0)` is a safe existence check; `.name` is writable on a chart window, not just a montage; a pop-out at `WPos 10000 10000` lands at x 6162 (clamped to the virtual desktop edge), y 10063 (held), so it is off-screen and hidden; `GetRect` pops up `left,top,right,bottom`; `WSize` issued after an off-screen `WPos` does not take, so size before you move.
 
 *Sources: das-advanced-hotkey-guide.pdf pp.9, 11–13, 19–21, 35*
 
