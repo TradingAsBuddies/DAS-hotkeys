@@ -18,14 +18,16 @@ history reads top to bottom.
 | First forward test (2026-09-24): verdict not successful; 13 of 13 in-session round trips stopped | v0.2.1 |
 | Signed positions from `%POS` Type, close side chosen by the driver, flatten on host sleep, report on exit | v0.2.1 |
 | Breadth dashboard (`TICK$ JVNT$ ADVN$ DECN$ VIX$`) logged each cycle; `--vold-filter` on entry side | v0.2.1 |
+| Second forward test (2026-09-25 to 12:00): no trades executed, target window lost its name; replay −1.3R over 10 | v0.2.2 |
+| Every injection verified against the socket reply and the DAS log; loud halt when the target is gone | v0.2.2 |
 
 ## Next
 
 1. **Stop width.** 1.5 × ATR(14) on 1-minute bars stopped every trade on 09-24, two of them
    inside 30 seconds. Candidates: ATR on 5-minute bars, a floor of 0.5% of price, or a
    required close beyond the reference line. Decide with a backtest run, not a guess.
-2. **Second forward test (2026-09-25, session to 12:00 ET)** with the VOLD filter and SIM R;
-   results file and verdict.
+2. **Per-name side rule from the gameplan** (runners long-only) and **no entries inside the
+   last 15 minutes** of the session window, both learned on 09-25.
 3. **Run the driver where the positions are.** Thursday's flatten was lost because the laptop
    left for a conference. Either the driver runs on the trader desk as a service, or entry,
    stop and EOD close move into DAS scripts (Timer Event) so the platform supervises its own
