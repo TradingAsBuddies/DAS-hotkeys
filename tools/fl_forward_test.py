@@ -98,6 +98,32 @@ def market_time(d: h.DAS, sym: str = "SPY") -> str:
     return ts[-1] if ts else ""
 
 
+BREADTH = ["TICK$", "JVNT$", "ADVN$", "DECN$", "VIX$"]   # $TICK, $VOLD, $ADD, $VIX in DAS symbols
+
+
+def breadth(d: h.DAS) -> dict[str, float]:
+    """Intraday dashboard. JVNT$ is NYSE net volume (the $VOLD line);
+    ADVN$-DECN$ is $ADD. All read 0 before 09:30 ET."""
+    for s in BREADTH:
+        d.send(f"SB {s} Lv1")
+    r = d.drain(2.5)
+    for s in BREADTH:
+        d.send(f"UNSB {s} Lv1")
+    out: dict[str, float] = {}
+    for l in r.splitlines():
+        p = l.split()
+        if p and p[0] == "$Quote" and p[1] in BREADTH:
+            for tok in p[2:]:
+                if tok.startswith("L:"):
+                    try:
+                        out[p[1]] = float(tok[2:])
+                    except ValueError:
+                        pass
+    if "ADVN$" in out and "DECN$" in out:
+        out["ADD"] = out["ADVN$"] - out["DECN$"]
+    return out
+
+
 def positions(d: h.DAS) -> dict[str, int]:
     """Signed shares per symbol. %POS Symbol Type Qty ...; Type 3 = short.
     The montage's own .POS property is UNSIGNED on this build (verified
@@ -137,6 +163,8 @@ def main() -> int:
     ap.add_argument("--eod", default="15:55")
     ap.add_argument("--interval", type=int, default=45)
     ap.add_argument("--dry-run", action="store_true", help="log signals, inject nothing")
+    ap.add_argument("--vold-filter", action="store_true",
+                    help="take a LONG only when JVNT$ ($VOLD) > 0 and a SHORT only when < 0")
     a = ap.parse_args()
 
     gp = GAMEPLAN_DIR / f"GamePlan-{a.date}.txt"
@@ -208,8 +236,9 @@ def main() -> int:
             t.ingest(d.drain(2.5).splitlines())
             d.send(f"UNSB {t.sym} MINCHART")
         pos = positions(d)
+        br = breadth(d)
         log(event="cycle", market=mt, pos={k: v for k, v in pos.items() if v},
-            bars={t.sym: len(t.bars) for t in tickers.values()})
+            breadth=br, bars={t.sym: len(t.bars) for t in tickers.values()})
         for t in tickers.values():
             q = pos.get(t.sym, 0)
             if t.open_side and q == 0 and t.last_pos != 0:
@@ -232,6 +261,11 @@ def main() -> int:
             if t.open_side or q != 0:
                 log(event="suppress", sym=t.sym, reason="position open")
                 continue
+            vold = br.get("JVNT$")
+            if a.vold_filter:
+                if vold is None or (sig == "LONG" and vold <= 0) or (sig == "SHORT" and vold >= 0):
+                    log(event="suppress", sym=t.sym, side=sig, reason="VOLD disagrees", vold=vold)
+                    continue
             qty = max(1, min(a.max_shares, int(a.risk / (STOP_MULT * info["atr"]))))
             if a.dry_run:
                 log(event="dry", sym=t.sym, side=sig, qty=qty)
@@ -245,7 +279,7 @@ def main() -> int:
             time.sleep(1.5)
             lines = cur.new_lines()
             h.dismiss_errors()
-            log(event="inject", sym=t.sym, side=sig, qty=qty, atr=info["atr"], das=lines)
+            log(event="inject", sym=t.sym, side=sig, qty=qty, atr=info["atr"], vold=vold, das=lines)
             if any("FL DONE" in l for l in lines):
                 t.open_side = sig
                 t.last_pos = qty if sig == "LONG" else -qty
