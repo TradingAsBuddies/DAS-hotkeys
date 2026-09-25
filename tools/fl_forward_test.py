@@ -99,6 +99,10 @@ def market_time(d: h.DAS, sym: str = "SPY") -> str:
 
 
 def positions(d: h.DAS) -> dict[str, int]:
+    """Signed shares per symbol. %POS Symbol Type Qty ...; Type 3 = short.
+    The montage's own .POS property is UNSIGNED on this build (verified
+    2026-09-25: a 300-share short read as POS=300), so the sign must come
+    from here, never from the window."""
     d.send("POSREFRESH")
     pos: dict[str, int] = {}
     for l in d.drain(2.0).splitlines():
@@ -106,10 +110,22 @@ def positions(d: h.DAS) -> dict[str, int]:
         if p and p[0] in ("%POS", "%IPOS"):
             off = 1 if p[0] == "%IPOS" else 0
             try:
-                pos[p[1 + off]] = int(float(p[3 + off]))
+                q = int(float(p[3 + off]))
+                pos[p[1 + off]] = -q if p[2 + off] == "3" else q
             except (IndexError, ValueError):
                 pass
     return pos
+
+
+def close_symbol(d: h.DAS, sym: str, q: int, close_code: str) -> list[str]:
+    """Inject 22-fl-flatten with the side chosen HERE from the signed quantity."""
+    side = "S" if q > 0 else "B"
+    cur = h.LogCursor()
+    d.script("GLOBALSCRIPT", f'$FL_SYM = "{sym}"; $FL_SIDE = "{side}"; $FL_QTY = {abs(q)};', 0.8)
+    d.script("montage1", close_code, 5.0)
+    time.sleep(2.5)
+    h.dismiss_errors()
+    return cur.new_lines()
 
 
 def main() -> int:
@@ -161,8 +177,25 @@ def main() -> int:
     close_code = script_code("22-fl-flatten.das")
     day = a.date.replace("-", "/")
     last_inject = 0.0
+    last_wall = time.time()
+
+    def flatten_all(reason: str, mt: str) -> None:
+        for sym, q in positions(d).items():
+            if q == 0:
+                continue
+            lines = close_symbol(d, sym, q, close_code) if not a.dry_run else []
+            log(event="flatten", sym=sym, qty=q, reason=reason, market=mt, das=lines)
+        left = {k: v for k, v in positions(d).items() if v}
+        log(event="flatten_done", reason=reason, open_positions=left)
 
     while True:
+        gap = time.time() - last_wall
+        last_wall = time.time()
+        if gap > 600:
+            # the host slept or the loop stalled: the EOD gate may have passed unseen
+            log(event="gap", seconds=int(gap))
+            flatten_all("wall gap", market_time(d))
+            break
         mt = market_time(d)
         if not mt:
             log(event="warn", reason="no quote timestamp; DAS frozen?")
@@ -215,21 +248,18 @@ def main() -> int:
             log(event="inject", sym=t.sym, side=sig, qty=qty, atr=info["atr"], das=lines)
             if any("FL DONE" in l for l in lines):
                 t.open_side = sig
-                t.last_pos = qty
+                t.last_pos = qty if sig == "LONG" else -qty
         if hhmm >= a.eod:
-            pos = positions(d)
-            for sym, q in pos.items():
-                if q == 0:
-                    continue
-                cur = h.LogCursor()
-                if not a.dry_run:
-                    d.script("GLOBALSCRIPT", f'$FL_SYM = "{sym}";', 0.8)
-                    d.script("montage1", close_code, 4.0)
-                    time.sleep(2.5)
-                log(event="flatten", sym=sym, qty=q, market=mt, das=cur.new_lines())
+            flatten_all("eod", mt)
             break
         time.sleep(a.interval)
 
+    write_report(d, a, syms, tickers, out_dir, log)
+    d.close()
+    return 0
+
+
+def write_report(d, a, syms, tickers, out_dir, log) -> None:
     d.send("POSREFRESH")
     pr = d.drain(3.0)
     trades = [l for l in pr.splitlines() if l.startswith(("%TRADE", "%ITRADE"))]
@@ -245,8 +275,6 @@ def main() -> int:
             ["", "## Round trips per ticker", ""] + [f"- {t.sym}: {t.rt}" for t in tickers.values()]
     rep.write_text("\n".join(lines) + "\n")
     print("report:", rep)
-    d.close()
-    return 0
 
 
 if __name__ == "__main__":
