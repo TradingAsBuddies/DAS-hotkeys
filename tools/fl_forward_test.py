@@ -89,6 +89,18 @@ class Ticker:
         return None, info
 
 
+def notify(msg: str) -> None:
+    """Spoken alert through the LifeOS notifier; best effort, never blocks."""
+    import subprocess
+    try:
+        subprocess.run(["curl", "-s", "-m", "3", "-X", "POST", "http://localhost:8888/notify",
+                        "-H", "Content-Type: application/json",
+                        "-d", json.dumps({"message": msg, "voice_id": "fTtv3eikoepIosk8dTZ5", "voice_enabled": True})],
+                       capture_output=True, timeout=5)
+    except Exception:
+        pass
+
+
 def market_time(d: h.DAS, sym: str = "SPY") -> str:
     d.send(f"SB {sym} Lv1")
     r = d.drain(2.0)
@@ -143,15 +155,32 @@ def positions(d: h.DAS) -> dict[str, int]:
     return pos
 
 
+class TargetGone(RuntimeError):
+    """DAS answered 'window name X does not exist' for the injection target."""
+
+
+def inject(d: h.DAS, window: str, code: str, wait: float) -> list[str]:
+    """SCRIPT into a named window and PROVE it ran: the reply must not name a
+    missing window and the log must gain at least one line. On 2026-09-25 the
+    montage lost its name mid-session and 15 entries were dropped in silence
+    because the reply was never read."""
+    cur = h.LogCursor()
+    reply = d.script(window, code, wait)
+    if "does not exist" in reply:
+        raise TargetGone(reply.strip()[:120])
+    time.sleep(2.0)
+    h.dismiss_errors()
+    lines = cur.new_lines()
+    if not any(",Log,FL " in l or ",Error," in l for l in lines):
+        raise TargetGone(f"no FL log line after injecting into {window}")
+    return lines
+
+
 def close_symbol(d: h.DAS, sym: str, q: int, close_code: str) -> list[str]:
     """Inject 22-fl-flatten with the side chosen HERE from the signed quantity."""
     side = "S" if q > 0 else "B"
-    cur = h.LogCursor()
     d.script("GLOBALSCRIPT", f'$FL_SYM = "{sym}"; $FL_SIDE = "{side}"; $FL_QTY = {abs(q)};', 0.8)
-    d.script("montage1", close_code, 5.0)
-    time.sleep(2.5)
-    h.dismiss_errors()
-    return cur.new_lines()
+    return inject(d, "montage1", close_code, 5.0)
 
 
 def main() -> int:
@@ -206,12 +235,17 @@ def main() -> int:
     day = a.date.replace("-", "/")
     last_inject = 0.0
     last_wall = time.time()
+    halted = False
 
     def flatten_all(reason: str, mt: str) -> None:
         for sym, q in positions(d).items():
             if q == 0:
                 continue
-            lines = close_symbol(d, sym, q, close_code) if not a.dry_run else []
+            try:
+                lines = close_symbol(d, sym, q, close_code) if not a.dry_run else []
+            except TargetGone as exc:
+                lines = [f"TARGET GONE: {exc}"]
+                notify(f"F L flatten failed for {sym}: {exc}")
             log(event="flatten", sym=sym, qty=q, reason=reason, market=mt, das=lines)
         left = {k: v for k, v in positions(d).items() if v}
         log(event="flatten_done", reason=reason, open_positions=left)
@@ -272,13 +306,18 @@ def main() -> int:
                 continue
             while time.time() - last_inject < 3.0:
                 time.sleep(0.5)
-            cur = h.LogCursor()
+            if halted:
+                log(event="suppress", sym=t.sym, side=sig, reason="halted: injection target gone")
+                continue
             d.script("GLOBALSCRIPT", f'$FL_SYM = "{t.sym}"; $FL_QTY = {qty}; $FL_ATR = {info["atr"]};', 0.8)
-            d.script("montage1", long_code if sig == "LONG" else short_code, 4.0)
+            try:
+                lines = inject(d, "montage1", long_code if sig == "LONG" else short_code, 4.0)
+            except TargetGone as exc:
+                halted = True
+                log(event="halt", sym=t.sym, side=sig, reason=str(exc))
+                notify(f"F L driver halted: {exc}")
+                continue
             last_inject = time.time()
-            time.sleep(1.5)
-            lines = cur.new_lines()
-            h.dismiss_errors()
             log(event="inject", sym=t.sym, side=sig, qty=qty, atr=info["atr"], vold=vold, das=lines)
             if any("FL DONE" in l for l in lines):
                 t.open_side = sig
