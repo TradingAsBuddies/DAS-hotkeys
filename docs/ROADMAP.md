@@ -26,16 +26,20 @@ history reads top to bottom.
    required close beyond the reference line. Decide with a backtest run, not a guess.
 2. **Second forward test (2026-09-25, session to 12:00 ET)** with the VOLD filter and SIM R;
    results file and verdict.
-3. **Hotkey file generation.** `*.htk` is plain text (`Key:Name:~ len:script` with
+3. **Run the driver where the positions are.** Thursday's flatten was lost because the laptop
+   left for a conference. Either the driver runs on the trader desk as a service, or entry,
+   stop and EOD close move into DAS scripts (Timer Event) so the platform supervises its own
+   positions. Until then the driver's ten-minute gap guard is the only protection.
+4. **Hotkey file generation.** `*.htk` is plain text (`Key:Name:~ len:script` with
    `~0D~0A` escapes). Generate it from `scripts/*.das` so the paste step disappears.
-4. **Trailing stop management** from the driver: `%OrderAct` shows the resting stop, so
+5. **Trailing stop management** from the driver: `%OrderAct` shows the resting stop, so
    re-price it as ATR moves, the way `fl_trading_agent.py` does.
-5. **Chart-with-studies from script.** `LoadSetting <file>.cst` may carry named studies; if
+6. **Chart-with-studies from script.** `LoadSetting <file>.cst` may carry named studies; if
    it does, one saved `.cst` gives every hidden chart `ema9 / sma34 / atr / vwap` without the
    Study Config dialog, and a fully DAS-native timer version of the FL scan becomes possible.
-6. **Signal parity check** between the DAS chart script (`03`) and the driver on the same
+7. **Signal parity check** between the DAS chart script (`03`) and the driver on the same
    bars, so a divergence shows up as a diff instead of a missed trade.
-7. **Reconcile the two FL definitions**: 9-EMA × 34-SMA (this repo) versus 9-EMA × VWAP
+8. **Reconcile the two FL definitions**: 9-EMA × 34-SMA (this repo) versus 9-EMA × VWAP
    (`fl_monitor_spec.md`). One definition, one backtest, one driver.
 
 ## Later
