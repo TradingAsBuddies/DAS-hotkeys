@@ -42,7 +42,21 @@ VOL_MULT, STOP_MULT, MIN_BARS, MAX_RT, SLIP = 1.5, 1.5, 34, 2, 0.15
 RTH_OPEN, RTH_CLOSE = (9, 30), (16, 0)
 
 
+_DAY_CACHE: dict = {}
+
+
 def load_day(sym: str, d: date, rth_only: bool = False) -> list[dict]:
+    key = (sym, d, rth_only)
+    if key in _DAY_CACHE:
+        return _DAY_CACHE[key]
+    rows = _load_day(sym, d, rth_only)
+    if len(_DAY_CACHE) > 4000:
+        _DAY_CACHE.clear()
+    _DAY_CACHE[key] = rows
+    return rows
+
+
+def _load_day(sym: str, d: date, rth_only: bool = False) -> list[dict]:
     f = DATA / sym / f"{sym}_{d.isoformat()}_minute.csv"
     if not f.exists():
         return []
@@ -127,10 +141,54 @@ def ema9_close_exit(fine: list[dict], start, end, side: str):
     return None
 
 
+def indicator_series(bars: list[dict], atr_bars: int):
+    """ema9[i], sma34[i], atr14[i], avgv20[i] computed over bars[:i+1] (i.e. bars[i] is the
+    last COMPLETED bar). One pass, so a 3-year run is linear, not quadratic."""
+    n = len(bars)
+    closes = [b["c"] for b in bars]
+    ema9 = [None] * n
+    k = 0.2
+    if n >= 9:
+        e = statistics.mean(closes[:9]); ema9[8] = e
+        for i in range(9, n):
+            e = closes[i] * k + e * (1 - k); ema9[i] = e
+    sma34 = [None] * n
+    run = 0.0
+    for i in range(n):
+        run += closes[i]
+        if i >= 34:
+            run -= closes[i - 34]
+        if i >= 33:
+            sma34[i] = run / 34
+    ranges = [b["h"] - b["lo"] for b in bars]
+    atr = [None] * n
+    rs = 0.0
+    for i in range(n):
+        rs += ranges[i]
+        if i >= 14:
+            rs -= ranges[i - 14]
+        if i >= 13:
+            atr[i] = rs / 14
+    if atr_bars > 1:                                   # ATR on coarser bars, as before
+        atr = [atr_of(bars[:i + 1], atr_bars) if i >= 14 * atr_bars else None for i in range(n)]
+    vols = [b["v"] for b in bars]
+    avgv = [None] * n                                  # mean of the 20 bars BEFORE bar i
+    vs = 0.0
+    for i in range(n):
+        if i >= 1:
+            vs += vols[i - 1]
+        if i >= 21:
+            vs -= vols[i - 21]
+        if i >= 20:
+            avgv[i] = vs / 20
+    return ema9, sma34, atr, avgv
+
+
 def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[dict] | None = None) -> list[dict]:
     """bars may include warm-up bars from earlier days; trades are only taken on `day`.
     `fine` is the same day resampled to --exit-ema9-close minutes, for the trailing exit."""
     trades = []
+    E9, S34, ATR, AVGV = indicator_series(bars, a.atr_bars)
     prev_sign = None
     pending = None                      # (side, bars_held) while waiting for --hold-bars
     pos = None
@@ -141,10 +199,10 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
     for i in range(MIN_BARS + 1, len(bars)):
         done = bars[:i]                      # completed bars; bars[i] is the bar now forming
         now = bars[i]
+        j = i - 1                                  # index of the last completed bar
         if day is not None and now["t"].date() != day:
             # warm-up bar: keep the indicator state current, take nothing
-            closes_w = [b["c"] for b in done]
-            prev_sign = 1 if ema(closes_w, 9) > statistics.mean(closes_w[-34:]) else -1
+            prev_sign = 1 if E9[j] > S34[j] else -1
             continue
         # ── manage an open position on the forming bar ──────────────────────
         if pos:
@@ -168,8 +226,7 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
         if pos:
             hit = (now["lo"] <= pos["stop"]) if pos["side"] == "LONG" else (now["h"] >= pos["stop"])
             if a.exit_on_opposite and prev_sign is not None:
-                closes_now = [b["c"] for b in done]
-                s_now = 1 if ema(closes_now, 9) > statistics.mean(closes_now[-34:]) else -1
+                s_now = 1 if E9[j] > S34[j] else -1
                 if (pos["side"] == "LONG" and s_now == -1) or (pos["side"] == "SHORT" and s_now == 1):
                     px = now["o"] - SLIP if pos["side"] == "LONG" else now["o"] + SLIP
                     pnl = (px - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - px) * pos["qty"]
@@ -193,15 +250,14 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
                 break
             continue
         # ── signal on completed bars ─────────────────────────────────────────
-        closes = [b["c"] for b in done]
-        e9, s34 = ema(closes, 9), statistics.mean(closes[-34:])
+        e9, s34 = E9[j], S34[j]
         sign = 1 if e9 > s34 else -1
         cross = sign if (prev_sign is not None and sign != prev_sign) else 0
         prev_sign = sign
         # ── --hold-bars: a cross arms a pending entry that must survive N more bars ──
         if a.hold_bars:
             if cross:
-                avgv0 = statistics.mean(b["v"] for b in done[-21:-1])
+                avgv0 = AVGV[j] or 0.0
                 volok0 = a.vol_mult <= 0 or (avgv0 > 0 and done[-1]["v"] > a.vol_mult * avgv0)
                 pending = {"side": sign, "held": 0} if volok0 else None
                 continue
@@ -221,12 +277,12 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
         if done[-1]["t"].time() < gate:
             continue
         if not a.hold_bars and a.vol_mult > 0:
-            avgv = statistics.mean(b["v"] for b in done[-21:-1])
+            avgv = AVGV[j] or 0.0
             if not (avgv > 0 and done[-1]["v"] > a.vol_mult * avgv):
                 continue
         if a.trend_5m and trend_5m(done) != cross:
             continue
-        atr = atr_of(done, a.atr_bars)
+        atr = ATR[j] or 0.0
         if atr <= 0:
             continue
         side = "LONG" if cross == 1 else "SHORT"
@@ -345,6 +401,15 @@ def main() -> int:
 
     tot = sum(t["pnl"] for t in all_trades)
     wins = [t for t in all_trades if t["pnl"] > 0]
+    if not a.quiet and len(all_trades) and (end - start).days > 40:
+        months = defaultdict(lambda: [0, 0.0])
+        for t in all_trades:
+            m = months[t["day"][:7]]; m[0] += 1; m[1] += t["pnl"]
+        print("\nby month:  " + "  ".join(f"{m} {v[0]}t {v[1]:+.0f}" for m, v in sorted(months.items())))
+        years = defaultdict(lambda: [0, 0.0])
+        for t in all_trades:
+            y = years[t["day"][:4]]; y[0] += 1; y[1] += t["pnl"]
+        print("by year:   " + "  ".join(f"{y} {v[0]}t {v[1]:+.0f} ({v[1] / a.risk:+.1f}R)" for y, v in sorted(years.items())))
     why = defaultdict(int)
     for t in all_trades:
         why[t["why"]] += 1
