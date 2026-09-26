@@ -196,6 +196,7 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
     max_rt = 1 if a.first_cross_only else MAX_RT
     gate = datetime.strptime(a.gate, "%H:%M").time()
     eod = datetime.strptime(a.eod, "%H:%M").time()
+    last_entry = datetime.strptime(a.last_entry, "%H:%M").time() if a.last_entry else None
     for i in range(MIN_BARS + 1, len(bars)):
         done = bars[:i]                      # completed bars; bars[i] is the bar now forming
         now = bars[i]
@@ -235,8 +236,9 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
                     rt += 1
                     hit = False
             if pos and hit:
-                pnl = (pos["stop"] - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - pos["stop"]) * pos["qty"]
-                trades.append({**pos, "exit": pos["stop"], "exit_t": now["t"], "pnl": pnl, "why": "stop"})
+                fill = pos["stop"] - a.stop_slip if pos["side"] == "LONG" else pos["stop"] + a.stop_slip
+                pnl = (fill - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - fill) * pos["qty"]
+                trades.append({**pos, "exit": fill, "exit_t": now["t"], "pnl": pnl, "why": "stop"})
                 pos = None
                 rt += 1
             elif pos and now["t"].time() >= eod:
@@ -275,6 +277,8 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
         if not cross or pos or rt >= max_rt:
             continue
         if done[-1]["t"].time() < gate:
+            continue
+        if a.last_entry and now["t"].time() >= last_entry:
             continue
         if not a.hold_bars and a.vol_mult > 0:
             avgv = AVGV[j] or 0.0
@@ -340,6 +344,8 @@ def main() -> int:
     ap.add_argument("--symbols", help="comma list: fixed universe for every day, ignoring plan files")
     ap.add_argument("--exit-ema9-close", type=int, default=0, help="exit when an N-minute bar closes across its 9-EMA (0 = off)")
     ap.add_argument("--be-after", type=float, default=0.0, help="move stop to entry after +R in favour (0 = off)")
+    ap.add_argument("--last-entry", default="", help="no new entries at or after HH:MM")
+    ap.add_argument("--stop-slip", type=float, default=0.0, help="adverse slippage per share on every stop fill")
     a = ap.parse_args()
 
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)
@@ -355,6 +361,7 @@ def main() -> int:
     flags = " ".join(f for f, on in [("%dm-bars" % a.bar_minutes, a.bar_minutes > 1), ("warm%d" % a.warmup_days, a.warmup_days),
                                      ("rth", a.rth_only), ("vol%g" % a.vol_mult, a.vol_mult != VOL_MULT), ("hold%d" % a.hold_bars, a.hold_bars),
                                      ("ema9x%dm" % a.exit_ema9_close, a.exit_ema9_close), ("be%g" % a.be_after, a.be_after),
+                                     ("last%s" % a.last_entry, a.last_entry), ("slip%g" % a.stop_slip, a.stop_slip),
                                      ("stop%g" % a.stop_mult, a.stop_mult != STOP_MULT),
                                      ("first", a.first_cross_only), ("opp-exit", a.exit_on_opposite), ("trend5m", a.trend_5m)] if on)
     if not a.quiet:

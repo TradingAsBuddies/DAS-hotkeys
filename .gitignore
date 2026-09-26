@@ -20,3 +20,6 @@ __pycache__/
 *.tmp
 .DS_Store
 *.swp
+
+# 8 MB of 1-minute trade rows; regenerate with backtest_fl_week.py
+backtest/results/fl-3y-1m-base.json

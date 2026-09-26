@@ -24,14 +24,16 @@ history reads top to bottom.
 | Monday thesis tested: hold-N, first-cross, opposite-cross exit, 5-min trend, 5/15-min signal bars; every variant negative | v0.2.4 |
 | 15-minute bars done properly (warm-up, RTH, end-of-day close): +7.5R this week on one trade, −9R prior week, −1.5R over two weeks | v0.2.5 |
 | Exit review: MFE/MAE shows the 1-minute entry unsalvageable; on 15-minute entries a 0.75×ATR stop + breakeven at +0.5R is +14R over two weeks, positive both weeks; 9-EMA-close trails destroy the payoff | v0.2.6 |
+| Three-year backtest on Massive flat files (740 days, 23 names): 1-minute −7,680R; 15-minute 1.5×ATR −310R; candidate +169R, every full year positive, but two cents of stop slippage halves it | v0.3.0 |
 
 ## Next
 
-1. **Candidate rule: 15-minute 9/34 cross, volume > 1.5×, regular hours, stop 0.75×ATR,
-   breakeven at +0.5R, hold to close.** +14R over two weeks on 44 trades with six winners.
-   Run it over three months of flat files (same script, `--start`) before Monday; if the shape
-   holds, the driver gets `--bar-minutes 15`, `--stop-mult 0.75`, `--be-after 0.5` and a
-   breakeven order update through `%OrderAct`. Before any further live run: either a
+1. **Candidate rule confirmed thin over three years** (+169R paper, +270R with no entries
+   after 15:00; friction-sensitive). Next: (a) measure real stop-fill slippage from the DAS
+   execution log on the first twenty paper stops; (b) driver flags `--bar-minutes 15`,
+   `--stop-mult 0.75`, `--be-after 0.5`, `--last-entry 15:00`, single stocks only, and a
+   breakeven order update through `%OrderAct`; (c) the serverless harness in TELOS so the
+   parameter grid runs as one submission instead of an afternoon. Before any further live run: either a
    different setup from `PlaybookSetups.md`, or the same tool pointed at the names and days
    where the cross did work (SPY, XOM, AMD, USO, DELL trend days) to find what they had in
    common. Also: join Friday's `$VOLD` log to Friday's bars for one day of breadth evidence.
