@@ -22,11 +22,14 @@ history reads top to bottom.
 | Every injection verified against the socket reply and the DAS log; loud halt when the target is gone | v0.2.2 |
 | Week backtest on Massive flat files (`backtest/backtest_fl_week.py`): −51R, 62% of stops inside one minute; stop width is not the fix | v0.2.3 |
 | Monday thesis tested: hold-N, first-cross, opposite-cross exit, 5-min trend, 5/15-min signal bars; every variant negative | v0.2.4 |
+| 15-minute bars done properly (warm-up, RTH, end-of-day close): +7.5R this week on one trade, −9R prior week, −1.5R over two weeks | v0.2.5 |
 
 ## Next
 
-1. **The 1-minute 9/34 cross has no edge on these names this week** under 20 variants of entry,
-   exit, stop, session length and signal timeframe. Before any further live run: either a
+1. **The 1-minute 9/34 cross has no edge on these names** under 20 variants; **15-minute bars
+   are roughly flat over two weeks** (45 trades) and are the only configuration worth an
+   experiment-sized live test. Extend the 15-minute sample backwards (the flat files go back
+   years) before calling it anything. Before any further live run: either a
    different setup from `PlaybookSetups.md`, or the same tool pointed at the names and days
    where the cross did work (SPY, XOM, AMD, USO, DELL trend days) to find what they had in
    common. Also: join Friday's `$VOLD` log to Friday's bars for one day of breadth evidence.

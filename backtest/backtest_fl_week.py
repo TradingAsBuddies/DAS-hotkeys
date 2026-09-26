@@ -39,7 +39,10 @@ BANNED = {"MU", "CRCL", "UGRO"}
 VOL_MULT, STOP_MULT, MIN_BARS, MAX_RT, SLIP = 1.5, 1.5, 34, 2, 0.15
 
 
-def load_day(sym: str, d: date) -> list[dict]:
+RTH_OPEN, RTH_CLOSE = (9, 30), (16, 0)
+
+
+def load_day(sym: str, d: date, rth_only: bool = False) -> list[dict]:
     f = DATA / sym / f"{sym}_{d.isoformat()}_minute.csv"
     if not f.exists():
         return []
@@ -48,6 +51,8 @@ def load_day(sym: str, d: date) -> list[dict]:
         for r in csv.DictReader(fh):
             ts = datetime.fromtimestamp(int(r["window_start"]) / 1e9, tz=timezone.utc).astimezone(ET)
             if ts.hour < 4:
+                continue
+            if rth_only and not (RTH_OPEN <= (ts.hour, ts.minute) < RTH_CLOSE):
                 continue
             rows.append(dict(t=ts, o=float(r["open"]), h=float(r["high"]), lo=float(r["low"]),
                              c=float(r["close"]), v=float(r["volume"])))
@@ -103,7 +108,8 @@ def trend_5m(done: list[dict]) -> int:
     return 1 if ema(fives, 9) > statistics.mean(fives[-34:]) else -1
 
 
-def run_day(sym: str, bars: list[dict], a) -> list[dict]:
+def run_day(sym: str, bars: list[dict], a, day: date | None = None) -> list[dict]:
+    """bars may include warm-up bars from earlier days; trades are only taken on `day`."""
     trades = []
     prev_sign = None
     pending = None                      # (side, bars_held) while waiting for --hold-bars
@@ -115,6 +121,11 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
     for i in range(MIN_BARS + 1, len(bars)):
         done = bars[:i]                      # completed bars; bars[i] is the bar now forming
         now = bars[i]
+        if day is not None and now["t"].date() != day:
+            # warm-up bar: keep the indicator state current, take nothing
+            closes_w = [b["c"] for b in done]
+            prev_sign = 1 if ema(closes_w, 9) > statistics.mean(closes_w[-34:]) else -1
+            continue
         # ── manage an open position on the forming bar ──────────────────────
         if pos:
             hit = (now["lo"] <= pos["stop"]) if pos["side"] == "LONG" else (now["h"] >= pos["stop"])
@@ -140,7 +151,9 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
                 pos = None
                 rt += 1
         if now["t"].time() >= eod:
-            break
+            if day is None:
+                break
+            continue
         # ── signal on completed bars ─────────────────────────────────────────
         closes = [b["c"] for b in done]
         e9, s34 = ema(closes, 9), statistics.mean(closes[-34:])
@@ -151,7 +164,7 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
         if a.hold_bars:
             if cross:
                 avgv0 = statistics.mean(b["v"] for b in done[-21:-1])
-                volok0 = avgv0 > 0 and done[-1]["v"] > VOL_MULT * avgv0
+                volok0 = a.vol_mult <= 0 or (avgv0 > 0 and done[-1]["v"] > a.vol_mult * avgv0)
                 pending = {"side": sign, "held": 0} if volok0 else None
                 continue
             if pending:
@@ -169,9 +182,9 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
             continue
         if done[-1]["t"].time() < gate:
             continue
-        if not a.hold_bars:
+        if not a.hold_bars and a.vol_mult > 0:
             avgv = statistics.mean(b["v"] for b in done[-21:-1])
-            if not (avgv > 0 and done[-1]["v"] > VOL_MULT * avgv):
+            if not (avgv > 0 and done[-1]["v"] > a.vol_mult * avgv):
                 continue
         if a.trend_5m and trend_5m(done) != cross:
             continue
@@ -187,10 +200,19 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
         qty = max(1, min(a.max_shares, int(a.risk / size_dist)))
         stop = entry - stop_dist if side == "LONG" else entry + stop_dist
         pos = dict(sym=sym, side=side, qty=qty, entry=entry, stop=stop, atr=atr, entry_t=now["t"])
+    if pos:
+        # series ended with a position open (e.g. RTH 15-minute bars end before the eod gate):
+        # close on the last bar's close, as the flatten would
+        last = bars[-1]
+        px = last["c"] - SLIP if pos["side"] == "LONG" else last["c"] + SLIP
+        pnl = (px - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - px) * pos["qty"]
+        trades.append({**pos, "exit": px, "exit_t": last["t"], "pnl": pnl, "why": "eod"})
     return trades
 
 
-def universe_for(d: date, plans: dict[date, list[str]]) -> tuple[list[str], str]:
+def universe_for(d: date, plans: dict[date, list[str]], fixed: list[str] | None = None) -> tuple[list[str], str]:
+    if fixed:
+        return fixed, "fixed universe"
     if d in plans:
         return plans[d], "that day's plan"
     union = sorted({s for v in plans.values() for s in v})
@@ -214,9 +236,13 @@ def main() -> int:
     ap.add_argument("--exit-on-opposite", action="store_true", help="exit when the opposite cross prints")
     ap.add_argument("--trend-5m", action="store_true", help="only trade with the 5-minute 9/34 sign")
     ap.add_argument("--bar-minutes", type=int, default=1, help="signal timeframe: resample bars to N minutes")
+    ap.add_argument("--warmup-days", type=int, default=0, help="prepend N prior trading days so the 34-SMA is warm at the open")
+    ap.add_argument("--rth-only", action="store_true", help="regular-hours bars only (09:30-16:00)")
+    ap.add_argument("--vol-mult", type=float, default=VOL_MULT, help="signal-bar volume vs 20-bar average; 0 disables")
     ap.add_argument("--quiet", action="store_true", help="week line only")
     ap.add_argument("--plans-dir", default="/mnt/c/Cobra Trading_x64/GamePlan")
     ap.add_argument("--json", help="write trades to this JSON file")
+    ap.add_argument("--symbols", help="comma list: fixed universe for every day, ignoring plan files")
     a = ap.parse_args()
 
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)
@@ -229,7 +255,8 @@ def main() -> int:
         d += timedelta(days=1)
 
     all_trades = []
-    flags = " ".join(f for f, on in [("%dm-bars" % a.bar_minutes, a.bar_minutes > 1), ("hold%d" % a.hold_bars, a.hold_bars),
+    flags = " ".join(f for f, on in [("%dm-bars" % a.bar_minutes, a.bar_minutes > 1), ("warm%d" % a.warmup_days, a.warmup_days),
+                                     ("rth", a.rth_only), ("vol%g" % a.vol_mult, a.vol_mult != VOL_MULT), ("hold%d" % a.hold_bars, a.hold_bars),
                                      ("first", a.first_cross_only), ("opp-exit", a.exit_on_opposite), ("trend5m", a.trend_5m)] if on)
     if not a.quiet:
         print(f"FL week backtest {a.start}..{a.end}  gate {a.gate}  eod {a.eod}  risk ${a.risk:.0f}  "
@@ -237,15 +264,27 @@ def main() -> int:
     d = start
     while d <= end:
         if d.weekday() < 5:
-            syms, how = universe_for(d, plans)
+            syms, how = universe_for(d, plans, [x.strip().upper() for x in a.symbols.split(",")] if a.symbols else None)
             day_tr = []
             missing = []
             for s in syms:
-                bars = resample(load_day(s, d), a.bar_minutes)
+                series = []
+                back, dd = 0, d
+                while back < a.warmup_days:
+                    dd -= timedelta(days=1)
+                    if dd.weekday() >= 5:
+                        continue
+                    series = load_day(s, dd, a.rth_only) + series
+                    back += 1
+                today = load_day(s, d, a.rth_only)
+                if len(resample(today, a.bar_minutes)) < 5:
+                    missing.append(s)
+                    continue
+                bars = resample(series + today, a.bar_minutes)
                 if len(bars) < MIN_BARS + 10:
                     missing.append(s)
                     continue
-                day_tr += run_day(s, bars, a)
+                day_tr += run_day(s, bars, a, d)
             pnl = sum(t["pnl"] for t in day_tr)
             stops = sum(1 for t in day_tr if t["why"] == "stop")
             if not a.quiet:
