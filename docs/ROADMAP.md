@@ -20,12 +20,14 @@ history reads top to bottom.
 | Breadth dashboard (`TICK$ JVNT$ ADVN$ DECN$ VIX$`) logged each cycle; `--vold-filter` on entry side | v0.2.1 |
 | Second forward test (2026-09-25 to 12:00): no trades executed, target window lost its name; replay −1.3R over 10 | v0.2.2 |
 | Every injection verified against the socket reply and the DAS log; loud halt when the target is gone | v0.2.2 |
+| Week backtest on Massive flat files (`backtest/backtest_fl_week.py`): −51R, 62% of stops inside one minute; stop width is not the fix | v0.2.3 |
 
 ## Next
 
-1. **Stop width.** 1.5 × ATR(14) on 1-minute bars stopped every trade on 09-24, two of them
-   inside 30 seconds. Candidates: ATR on 5-minute bars, a floor of 0.5% of price, or a
-   required close beyond the reference line. Decide with a backtest run, not a guess.
+1. **The entry, not the stop.** The week backtest tried a 0.5% floor and 5-minute ATR; both
+   still lose the week. Next candidates, each a one-flag variant in `backtest_fl_week.py`:
+   cross must hold N bars, first cross of the session only, exit on the opposite cross,
+   5-minute trend agreement. Run before Monday's open; trade nothing that has not passed.
 2. **Per-name side rule from the gameplan** (runners long-only) and **no entries inside the
    last 15 minutes** of the session window, both learned on 09-25.
 3. **Run the driver where the positions are.** Thursday's flatten was lost because the laptop
