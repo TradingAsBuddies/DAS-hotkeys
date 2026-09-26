@@ -108,8 +108,28 @@ def trend_5m(done: list[dict]) -> int:
     return 1 if ema(fives, 9) > statistics.mean(fives[-34:]) else -1
 
 
-def run_day(sym: str, bars: list[dict], a, day: date | None = None) -> list[dict]:
-    """bars may include warm-up bars from earlier days; trades are only taken on `day`."""
+def ema9_close_exit(fine: list[dict], start, end, side: str):
+    """First fine bar in (start, end] whose close is on the opposite side of the fine 9-EMA.
+    Returns (bar, ema) or None. EMA seeded on the 9 bars before `start`."""
+    idx = [i for i, b in enumerate(fine) if start < b["t"] <= end]
+    if not idx:
+        return None
+    first = idx[0]
+    if first < 9:
+        return None
+    k = 2 / 10
+    e = statistics.mean(b["c"] for b in fine[first - 9:first])
+    for i in idx:
+        b = fine[i]
+        e = b["c"] * k + e * (1 - k)
+        if (side == "LONG" and b["c"] < e) or (side == "SHORT" and b["c"] > e):
+            return b, e
+    return None
+
+
+def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[dict] | None = None) -> list[dict]:
+    """bars may include warm-up bars from earlier days; trades are only taken on `day`.
+    `fine` is the same day resampled to --exit-ema9-close minutes, for the trailing exit."""
     trades = []
     prev_sign = None
     pending = None                      # (side, bars_held) while waiting for --hold-bars
@@ -127,6 +147,24 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None) -> list[dict
             prev_sign = 1 if ema(closes_w, 9) > statistics.mean(closes_w[-34:]) else -1
             continue
         # ── manage an open position on the forming bar ──────────────────────
+        if pos:
+            # breakeven: once the bar before this one has shown +R in our favour, stop -> entry
+            if a.be_after and not pos.get("be"):
+                prev = done[-1]
+                fav = (prev["h"] - pos["entry"]) if pos["side"] == "LONG" else (pos["entry"] - prev["lo"])
+                if fav >= a.be_after * pos["risk"]:
+                    pos["stop"] = pos["entry"]; pos["be"] = True
+            # finer-timeframe 9-EMA close exit, checked across this bar's span
+            if fine is not None and pos.get("entered_bar") != now["t"]:
+                span_end = now["t"] + timedelta(minutes=a.bar_minutes)
+                hitx = ema9_close_exit(fine, now["t"] - timedelta(seconds=1), span_end, pos["side"])
+                if hitx:
+                    fb, _ = hitx
+                    px = fb["c"] - SLIP if pos["side"] == "LONG" else fb["c"] + SLIP
+                    pnl = (px - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - px) * pos["qty"]
+                    trades.append({**pos, "exit": px, "exit_t": fb["t"], "pnl": pnl, "why": "ema9"})
+                    pos = None
+                    rt += 1
         if pos:
             hit = (now["lo"] <= pos["stop"]) if pos["side"] == "LONG" else (now["h"] >= pos["stop"])
             if a.exit_on_opposite and prev_sign is not None:
@@ -199,7 +237,8 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None) -> list[dict
         size_dist = max(round((a.size_mult or a.stop_mult) * atr, 2), entry * a.stop_floor_pct / 100)
         qty = max(1, min(a.max_shares, int(a.risk / size_dist)))
         stop = entry - stop_dist if side == "LONG" else entry + stop_dist
-        pos = dict(sym=sym, side=side, qty=qty, entry=entry, stop=stop, atr=atr, entry_t=now["t"])
+        pos = dict(sym=sym, side=side, qty=qty, entry=entry, stop=stop, atr=atr, entry_t=now["t"],
+                   risk=stop_dist, entered_bar=now["t"])
     if pos:
         # series ended with a position open (e.g. RTH 15-minute bars end before the eod gate):
         # close on the last bar's close, as the flatten would
@@ -243,6 +282,8 @@ def main() -> int:
     ap.add_argument("--plans-dir", default="/mnt/c/Cobra Trading_x64/GamePlan")
     ap.add_argument("--json", help="write trades to this JSON file")
     ap.add_argument("--symbols", help="comma list: fixed universe for every day, ignoring plan files")
+    ap.add_argument("--exit-ema9-close", type=int, default=0, help="exit when an N-minute bar closes across its 9-EMA (0 = off)")
+    ap.add_argument("--be-after", type=float, default=0.0, help="move stop to entry after +R in favour (0 = off)")
     a = ap.parse_args()
 
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)
@@ -257,6 +298,8 @@ def main() -> int:
     all_trades = []
     flags = " ".join(f for f, on in [("%dm-bars" % a.bar_minutes, a.bar_minutes > 1), ("warm%d" % a.warmup_days, a.warmup_days),
                                      ("rth", a.rth_only), ("vol%g" % a.vol_mult, a.vol_mult != VOL_MULT), ("hold%d" % a.hold_bars, a.hold_bars),
+                                     ("ema9x%dm" % a.exit_ema9_close, a.exit_ema9_close), ("be%g" % a.be_after, a.be_after),
+                                     ("stop%g" % a.stop_mult, a.stop_mult != STOP_MULT),
                                      ("first", a.first_cross_only), ("opp-exit", a.exit_on_opposite), ("trend5m", a.trend_5m)] if on)
     if not a.quiet:
         print(f"FL week backtest {a.start}..{a.end}  gate {a.gate}  eod {a.eod}  risk ${a.risk:.0f}  "
@@ -284,7 +327,8 @@ def main() -> int:
                 if len(bars) < MIN_BARS + 10:
                     missing.append(s)
                     continue
-                day_tr += run_day(s, bars, a, d)
+                fine = resample(today, a.exit_ema9_close) if a.exit_ema9_close else None
+                day_tr += run_day(s, bars, a, d, fine)
             pnl = sum(t["pnl"] for t in day_tr)
             stops = sum(1 for t in day_tr if t["why"] == "stop")
             if not a.quiet:
@@ -315,7 +359,8 @@ def main() -> int:
             by[t["sym"]] += t["pnl"]
         print("by ticker: " + "  ".join(f"{s} {v:+.0f}" for s, v in sorted(by.items(), key=lambda kv: kv[1])))
     if a.json:
-        Path(a.json).write_text(json.dumps([{**t, "entry_t": t["entry_t"].isoformat(), "exit_t": t["exit_t"].isoformat()} for t in all_trades], indent=1))
+        Path(a.json).write_text(json.dumps([{k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in t.items()}
+                                            for t in all_trades], indent=1))
     return 0
 
 
