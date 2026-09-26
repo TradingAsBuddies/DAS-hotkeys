@@ -25,6 +25,7 @@ history reads top to bottom.
 | 15-minute bars done properly (warm-up, RTH, end-of-day close): +7.5R this week on one trade, −9R prior week, −1.5R over two weeks | v0.2.5 |
 | Exit review: MFE/MAE shows the 1-minute entry unsalvageable; on 15-minute entries a 0.75×ATR stop + breakeven at +0.5R is +14R over two weeks, positive both weeks; 9-EMA-close trails destroy the payoff | v0.2.6 |
 | Three-year backtest on Massive flat files (740 days, 23 names): 1-minute −7,680R; 15-minute 1.5×ATR −310R; candidate +169R, every full year positive, but two cents of stop slippage halves it | v0.3.0 |
+| Structural filters from the splits: entries before 11:00 and single stocks only → +292R, drawdown 12.7R, Sharpe 3.5, survives 5¢ slippage at +198R; partial profits prove win rate cannot be bought | v0.3.1 |
 
 ## Next
 

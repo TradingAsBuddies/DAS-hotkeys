@@ -207,6 +207,16 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
             continue
         # ── manage an open position on the forming bar ──────────────────────
         if pos:
+            # partial profit: on the first bar that trades through +R, take half at that price
+            if a.partial and not pos.get("half"):
+                tgt = pos["entry"] + a.partial * pos["risk"] if pos["side"] == "LONG" else pos["entry"] - a.partial * pos["risk"]
+                reached = (now["h"] >= tgt) if pos["side"] == "LONG" else (now["lo"] <= tgt)
+                if reached and pos["qty"] >= 2:
+                    half = pos["qty"] // 2
+                    pnl = (tgt - pos["entry"]) * half if pos["side"] == "LONG" else (pos["entry"] - tgt) * half
+                    trades.append({**pos, "qty": half, "exit": tgt, "exit_t": now["t"], "pnl": pnl, "why": "partial"})
+                    pos["qty"] -= half; pos["half"] = True
+                    pos["stop"] = pos["entry"]; pos["be"] = True
             # breakeven: once the bar before this one has shown +R in our favour, stop -> entry
             if a.be_after and not pos.get("be"):
                 prev = done[-1]
@@ -290,6 +300,8 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
         if atr <= 0:
             continue
         side = "LONG" if cross == 1 else "SHORT"
+        if a.side and side != a.side:
+            continue
         entry = now["o"] + SLIP if side == "LONG" else now["o"] - SLIP
         stop_dist = max(round(a.stop_mult * atr, 2), entry * a.stop_floor_pct / 100)
         if stop_dist < 0.02:
@@ -345,6 +357,9 @@ def main() -> int:
     ap.add_argument("--exit-ema9-close", type=int, default=0, help="exit when an N-minute bar closes across its 9-EMA (0 = off)")
     ap.add_argument("--be-after", type=float, default=0.0, help="move stop to entry after +R in favour (0 = off)")
     ap.add_argument("--last-entry", default="", help="no new entries at or after HH:MM")
+    ap.add_argument("--side", default="", choices=["", "LONG", "SHORT"], help="take one side only")
+    ap.add_argument("--partial", type=float, default=0.0, help="take half off at +R and move the stop to entry")
+    ap.add_argument("--exclude", default="", help="comma list of symbols to drop from the universe")
     ap.add_argument("--stop-slip", type=float, default=0.0, help="adverse slippage per share on every stop fill")
     a = ap.parse_args()
 
@@ -362,6 +377,7 @@ def main() -> int:
                                      ("rth", a.rth_only), ("vol%g" % a.vol_mult, a.vol_mult != VOL_MULT), ("hold%d" % a.hold_bars, a.hold_bars),
                                      ("ema9x%dm" % a.exit_ema9_close, a.exit_ema9_close), ("be%g" % a.be_after, a.be_after),
                                      ("last%s" % a.last_entry, a.last_entry), ("slip%g" % a.stop_slip, a.stop_slip),
+                                     (a.side.lower(), a.side), ("half@%g" % a.partial, a.partial), ("excl", a.exclude),
                                      ("stop%g" % a.stop_mult, a.stop_mult != STOP_MULT),
                                      ("first", a.first_cross_only), ("opp-exit", a.exit_on_opposite), ("trend5m", a.trend_5m)] if on)
     if not a.quiet:
@@ -371,6 +387,9 @@ def main() -> int:
     while d <= end:
         if d.weekday() < 5:
             syms, how = universe_for(d, plans, [x.strip().upper() for x in a.symbols.split(",")] if a.symbols else None)
+            if a.exclude:
+                drop = {x.strip().upper() for x in a.exclude.split(",")}
+                syms = [x for x in syms if x not in drop]
             day_tr = []
             missing = []
             for s in syms:
