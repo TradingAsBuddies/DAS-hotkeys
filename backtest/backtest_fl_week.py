@@ -55,6 +55,21 @@ def load_day(sym: str, d: date) -> list[dict]:
     return rows
 
 
+def resample(bars: list[dict], minutes: int) -> list[dict]:
+    """Aggregate 1-minute bars into N-minute bars aligned to the clock."""
+    if minutes <= 1:
+        return bars
+    out: list[dict] = []
+    for b in bars:
+        key = b["t"].replace(minute=b["t"].minute - b["t"].minute % minutes, second=0, microsecond=0)
+        if out and out[-1]["t"] == key:
+            o = out[-1]
+            o["h"] = max(o["h"], b["h"]); o["lo"] = min(o["lo"], b["lo"]); o["c"] = b["c"]; o["v"] += b["v"]
+        else:
+            out.append(dict(t=key, o=b["o"], h=b["h"], lo=b["lo"], c=b["c"], v=b["v"]))
+    return out
+
+
 def ema(vals, n):
     k = 2 / (n + 1)
     e = statistics.mean(vals[:n])
@@ -79,11 +94,22 @@ def atr_of(bars: list[dict], atr_bars: int) -> float:
     return statistics.mean(h - lo for h, lo in agg)
 
 
+def trend_5m(done: list[dict]) -> int:
+    """Sign of 9-EMA vs 34-SMA on 5-minute closes built from the completed 1-minute bars."""
+    closes = [b["c"] for b in done]
+    fives = [closes[i] for i in range(len(closes) - 1, -1, -5)][::-1]     # every 5th close, aligned to the last
+    if len(fives) < 34:
+        return 0
+    return 1 if ema(fives, 9) > statistics.mean(fives[-34:]) else -1
+
+
 def run_day(sym: str, bars: list[dict], a) -> list[dict]:
     trades = []
     prev_sign = None
+    pending = None                      # (side, bars_held) while waiting for --hold-bars
     pos = None
     rt = 0
+    max_rt = 1 if a.first_cross_only else MAX_RT
     gate = datetime.strptime(a.gate, "%H:%M").time()
     eod = datetime.strptime(a.eod, "%H:%M").time()
     for i in range(MIN_BARS + 1, len(bars)):
@@ -92,12 +118,22 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
         # ── manage an open position on the forming bar ──────────────────────
         if pos:
             hit = (now["lo"] <= pos["stop"]) if pos["side"] == "LONG" else (now["h"] >= pos["stop"])
-            if hit:
+            if a.exit_on_opposite and prev_sign is not None:
+                closes_now = [b["c"] for b in done]
+                s_now = 1 if ema(closes_now, 9) > statistics.mean(closes_now[-34:]) else -1
+                if (pos["side"] == "LONG" and s_now == -1) or (pos["side"] == "SHORT" and s_now == 1):
+                    px = now["o"] - SLIP if pos["side"] == "LONG" else now["o"] + SLIP
+                    pnl = (px - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - px) * pos["qty"]
+                    trades.append({**pos, "exit": px, "exit_t": now["t"], "pnl": pnl, "why": "opposite"})
+                    pos = None
+                    rt += 1
+                    hit = False
+            if pos and hit:
                 pnl = (pos["stop"] - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - pos["stop"]) * pos["qty"]
                 trades.append({**pos, "exit": pos["stop"], "exit_t": now["t"], "pnl": pnl, "why": "stop"})
                 pos = None
                 rt += 1
-            elif now["t"].time() >= eod:
+            elif pos and now["t"].time() >= eod:
                 px = now["o"] - SLIP if pos["side"] == "LONG" else now["o"] + SLIP
                 pnl = (px - pos["entry"]) * pos["qty"] if pos["side"] == "LONG" else (pos["entry"] - px) * pos["qty"]
                 trades.append({**pos, "exit": px, "exit_t": now["t"], "pnl": pnl, "why": "eod"})
@@ -111,22 +147,44 @@ def run_day(sym: str, bars: list[dict], a) -> list[dict]:
         sign = 1 if e9 > s34 else -1
         cross = sign if (prev_sign is not None and sign != prev_sign) else 0
         prev_sign = sign
-        if not cross or pos or rt >= MAX_RT:
+        # ── --hold-bars: a cross arms a pending entry that must survive N more bars ──
+        if a.hold_bars:
+            if cross:
+                avgv0 = statistics.mean(b["v"] for b in done[-21:-1])
+                volok0 = avgv0 > 0 and done[-1]["v"] > VOL_MULT * avgv0
+                pending = {"side": sign, "held": 0} if volok0 else None
+                continue
+            if pending:
+                if sign != pending["side"]:
+                    pending = None
+                    continue
+                pending["held"] += 1
+                if pending["held"] < a.hold_bars:
+                    continue
+                cross = pending["side"]
+                pending = None
+            else:
+                continue
+        if not cross or pos or rt >= max_rt:
             continue
         if done[-1]["t"].time() < gate:
             continue
-        avgv = statistics.mean(b["v"] for b in done[-21:-1])
-        if not (avgv > 0 and done[-1]["v"] > VOL_MULT * avgv):
+        if not a.hold_bars:
+            avgv = statistics.mean(b["v"] for b in done[-21:-1])
+            if not (avgv > 0 and done[-1]["v"] > VOL_MULT * avgv):
+                continue
+        if a.trend_5m and trend_5m(done) != cross:
             continue
         atr = atr_of(done, a.atr_bars)
         if atr <= 0:
             continue
         side = "LONG" if cross == 1 else "SHORT"
         entry = now["o"] + SLIP if side == "LONG" else now["o"] - SLIP
-        stop_dist = max(round(STOP_MULT * atr, 2), entry * a.stop_floor_pct / 100)
+        stop_dist = max(round(a.stop_mult * atr, 2), entry * a.stop_floor_pct / 100)
         if stop_dist < 0.02:
             continue
-        qty = max(1, min(a.max_shares, int(a.risk / stop_dist)))
+        size_dist = max(round((a.size_mult or a.stop_mult) * atr, 2), entry * a.stop_floor_pct / 100)
+        qty = max(1, min(a.max_shares, int(a.risk / size_dist)))
         stop = entry - stop_dist if side == "LONG" else entry + stop_dist
         pos = dict(sym=sym, side=side, qty=qty, entry=entry, stop=stop, atr=atr, entry_t=now["t"])
     return trades
@@ -149,6 +207,14 @@ def main() -> int:
     ap.add_argument("--max-shares", type=int, default=300)
     ap.add_argument("--stop-floor-pct", type=float, default=0.0, help="minimum stop as %% of price")
     ap.add_argument("--atr-bars", type=int, default=1, help="ATR on N-minute bars (1 = as traded)")
+    ap.add_argument("--stop-mult", type=float, default=STOP_MULT, help="stop distance in ATRs")
+    ap.add_argument("--size-mult", type=float, default=0.0, help="size as if the stop were this many ATRs (default: --stop-mult)")
+    ap.add_argument("--hold-bars", type=int, default=0, help="cross must hold N completed bars before entry")
+    ap.add_argument("--first-cross-only", action="store_true", help="one entry per name per day")
+    ap.add_argument("--exit-on-opposite", action="store_true", help="exit when the opposite cross prints")
+    ap.add_argument("--trend-5m", action="store_true", help="only trade with the 5-minute 9/34 sign")
+    ap.add_argument("--bar-minutes", type=int, default=1, help="signal timeframe: resample bars to N minutes")
+    ap.add_argument("--quiet", action="store_true", help="week line only")
     ap.add_argument("--plans-dir", default="/mnt/c/Cobra Trading_x64/GamePlan")
     ap.add_argument("--json", help="write trades to this JSON file")
     a = ap.parse_args()
@@ -163,8 +229,11 @@ def main() -> int:
         d += timedelta(days=1)
 
     all_trades = []
-    print(f"FL week backtest {a.start}..{a.end}  gate {a.gate}  eod {a.eod}  risk ${a.risk:.0f}  "
-          f"stop {STOP_MULT}xATR({a.atr_bars}m){f' floor {a.stop_floor_pct}%' if a.stop_floor_pct else ''}")
+    flags = " ".join(f for f, on in [("%dm-bars" % a.bar_minutes, a.bar_minutes > 1), ("hold%d" % a.hold_bars, a.hold_bars),
+                                     ("first", a.first_cross_only), ("opp-exit", a.exit_on_opposite), ("trend5m", a.trend_5m)] if on)
+    if not a.quiet:
+        print(f"FL week backtest {a.start}..{a.end}  gate {a.gate}  eod {a.eod}  risk ${a.risk:.0f}  "
+              f"stop {a.stop_mult}xATR({a.atr_bars}m){f' floor {a.stop_floor_pct}%' if a.stop_floor_pct else ''} {flags}")
     d = start
     while d <= end:
         if d.weekday() < 5:
@@ -172,33 +241,40 @@ def main() -> int:
             day_tr = []
             missing = []
             for s in syms:
-                bars = load_day(s, d)
+                bars = resample(load_day(s, d), a.bar_minutes)
                 if len(bars) < MIN_BARS + 10:
                     missing.append(s)
                     continue
                 day_tr += run_day(s, bars, a)
             pnl = sum(t["pnl"] for t in day_tr)
             stops = sum(1 for t in day_tr if t["why"] == "stop")
-            print(f"\n{d} ({how}; {len(syms)} names{', no data: ' + ' '.join(missing) if missing else ''})")
-            print(f"  trades {len(day_tr):3d}  stopped {stops:3d}  eod {len(day_tr) - stops:3d}  "
-                  f"P&L {pnl:9.2f}  R {pnl / a.risk:6.2f}")
-            by = defaultdict(float)
-            for t in day_tr:
-                by[t["sym"]] += t["pnl"]
-            if by:
-                print("  " + "  ".join(f"{s} {v:+.0f}" for s, v in sorted(by.items(), key=lambda kv: kv[1])))
+            if not a.quiet:
+                print(f"\n{d} ({how}; {len(syms)} names{', no data: ' + ' '.join(missing) if missing else ''})")
+                print(f"  trades {len(day_tr):3d}  stopped {stops:3d}  other {len(day_tr) - stops:3d}  "
+                      f"P&L {pnl:9.2f}  R {pnl / a.risk:6.2f}")
+                by = defaultdict(float)
+                for t in day_tr:
+                    by[t["sym"]] += t["pnl"]
+                if by:
+                    print("  " + "  ".join(f"{s} {v:+.0f}" for s, v in sorted(by.items(), key=lambda kv: kv[1])))
             all_trades += [{**t, "day": d.isoformat()} for t in day_tr]
         d += timedelta(days=1)
 
     tot = sum(t["pnl"] for t in all_trades)
     wins = [t for t in all_trades if t["pnl"] > 0]
-    print(f"\nWEEK: trades {len(all_trades)}  win rate {len(wins) / len(all_trades) * 100 if all_trades else 0:.1f}%  "
-          f"P&L {tot:9.2f}  R {tot / a.risk:6.2f}  "
-          f"stopped {sum(1 for t in all_trades if t['why'] == 'stop')}")
-    by = defaultdict(float)
+    why = defaultdict(int)
     for t in all_trades:
-        by[t["sym"]] += t["pnl"]
-    print("by ticker: " + "  ".join(f"{s} {v:+.0f}" for s, v in sorted(by.items(), key=lambda kv: kv[1])))
+        why[t["why"]] += 1
+    days = defaultdict(float)
+    for t in all_trades:
+        days[t["day"]] += t["pnl"]
+    print(f"{'WEEK' if not a.quiet else flags or 'base':28} trades {len(all_trades):4d}  win {len(wins) / len(all_trades) * 100 if all_trades else 0:5.1f}%  "
+          f"P&L {tot:9.2f}  R {tot / a.risk:6.2f}  exits {dict(why)}  days+ {sum(1 for v in days.values() if v > 0)}/{len(days)}")
+    if not a.quiet:
+        by = defaultdict(float)
+        for t in all_trades:
+            by[t["sym"]] += t["pnl"]
+        print("by ticker: " + "  ".join(f"{s} {v:+.0f}" for s, v in sorted(by.items(), key=lambda kv: kv[1])))
     if a.json:
         Path(a.json).write_text(json.dumps([{**t, "entry_t": t["entry_t"].isoformat(), "exit_t": t["exit_t"].isoformat()} for t in all_trades], indent=1))
     return 0
