@@ -111,9 +111,9 @@ def sma34_deck():
     d.bullets(s, [
         "Setup:: a limit order placed before the bell at the 34-SMA of the extended-hours 15-minute chart, in the direction of the premarket trend.",
         "Trend read:: 15-minute 9-EMA above the premarket VWAP → long; below → short. Read once, pre-open.",
-        "Stock selection:: medium and large caps with premarket volume at least 2× their own 20-day median.",
+        "Stock selection:: medium and large caps with premarket volume at least 2× their own 20-day median, and no earnings release or 8-K in the prior 24 hours.",
         "Exit:: 1.0×ATR stop, no target; exit on the first 15-minute close back across the 9-EMA. Flat at 15:55.",
-        f"Evidence:: {st['trades']} simulated trades over three years on 14 names, {st['r']:+.0f}R, +35R after 5¢ of stop slippage.",
+        f"Evidence:: {st['trades']} simulated trades over three years on 14 names, {st['r']:+.0f}R; without earnings and 8-K days 627 trades, +114R, +69R after 5¢ of stop slippage.",
         "How to start:: trade it at 1R in simulation until you have twenty stop fills to measure. Every element of this rule was chosen after seeing the data; treat the numbers as in-sample.",
     ], size=16)
 
@@ -133,6 +133,7 @@ def sma34_deck():
     s = d.slide("Intraday Fundamentals", f"Why {ex['sym']} was on the list on {ex['day']}")
     d.bullets(s, [
         f"Premarket volume {ex['pm_ratio']}× its 20-day median premarket volume:: the only stock-selection filter. Two to three times is the sweet spot; above five it trades worse.",
+        "No earnings, no 8-K:: RKLB had not reported and had no 8-K in the prior 24 hours. That matters: 84% of earnings mornings pass the premarket filter, and they lose (58 trades, −16R). The heavy premarket this play wants is a sympathy move, an upgrade or a sector headline, not the company's own report.",
         "Pre-open read at 09:15:: 9-EMA 105.09 above the premarket VWAP 105.04, so the trend was up and the order was a buy.",
         "Level:: the 34-SMA of the extended-hours 15-minute chart at 104.41, below the 09:29 price, so the limit rested away from the market.",
         "Universe:: your in-play list of medium and large caps (tested on AMD BB CRWD DELL DRI INTC IONQ META MSTR NVDA RKLB SMCI TSLA XOM). No ETFs, commodities or small caps: the stop needs single-stock range and the premarket filter needs a name with a normal premarket.",
@@ -154,9 +155,15 @@ def sma34_deck():
             "Why 1.0×ATR and not 0.75: with the 0.75 stop, 344 of 521 first-fifteen-minute fills were stopped, median one minute after the fill. "
             "The opening minute's range is larger than 0.75 of a 15-minute ATR on these names.", 11, False, MUTED)
 
+    s = d.slide("Intraday Fundamentals: Catalysts", "SEC EDGAR 8-K filings joined to every trade day · earnings mornings are the losing subset")
+    d.picture(s, "sma34_catalyst.png", w=Inches(11.8))
+    d._text(s, Inches(0.5), Inches(6.0), Inches(12.3), Inches(0.9),
+            "Earnings and other-8-K reaction days: 106 trades, −27R, −0.26R each. Every other day: 627 trades, +114R, +0.18R each, max drawdown 26.7R, "
+            "+69R after 5¢ of stop slippage. The chance that a random 106-trade subset does this badly is under 2%.", 11, False, MUTED)
+
     s = d.slide("Trade Strategy", "The rule, as backtested (backtest/backtest_sma34_trend.py --preopen --gate 09:30 --exit-ema9-close --target-r 0 --stop-mult 1.0)")
     d.bullets(s, [
-        "Scan 09:15:: premarket volume ≥ 2× the name's 20-day median premarket volume. Skip names above 5× (they trade worse) and anything sub-$10 or post reverse-split.",
+        "Scan 09:15:: premarket volume ≥ 2× the name's 20-day median premarket volume. Skip names above 5× (they trade worse), anything sub-$10 or post reverse-split, and any name that reported earnings or filed an 8-K in the prior 24 hours.",
         "Direction:: 9-EMA on the extended-hours 15-minute chart above the premarket VWAP → long; below → short.",
         "Order:: limit at the 34-SMA value of the last completed 15-minute bar before 09:30. Only if the 09:29 price is on the trade side of it (buy below the market, sell short above it).",
         "Stop:: 1.0 × ATR(14) of the 15-minute chart, entered with the order as a bracket.",
@@ -203,7 +210,7 @@ def sma34_deck():
     s = d.slide("Trade Review", "What the three years say to do better")
     d.bullets(s, [
         "The original form does not work:: 0.75×ATR stop with a 1.8R target is −14R pre-open and −71R re-priced intraday; the opening minute takes the stop before the level can react.",
-        "Two changes made it:: a trailing exit on the 9-EMA close instead of the target, and a stop outside the opening minute's range. Together they are the only positive pre-open form found.",
+        "Three changes made it:: a trailing exit on the 9-EMA close instead of the target, a stop outside the opening minute's range, and no earnings or 8-K mornings. Together they are the only positive pre-open form found.",
         "It is a runner strategy with a 27% win rate:: four trades in ten stop within minutes, one in four pays. Size for that, not for the win rate.",
         "In-sample:: chart type, stop width and exit were chosen after seeing the data. 2024 was flat; the three months of 2023 supplied 38 of the 86R. A walk-forward that picks the premarket band on 2024 alone is the next test.",
         "Fills:: touch-equals-fill at the limit and clean stop fills are assumed. Requiring a 1¢ trade-through cost 4R; five cents of stop slippage cost 51R.",
@@ -220,7 +227,7 @@ def sma34_deck():
     s = d.slide("Score Card", "Self-graded 1–10 against the SMB rubric")
     d.table(s, [["Area", "Grade", "Reason"],
                 ["Big Picture", "6", "Market direction is context only; no index filter was found that helped."],
-                ["Intraday Fundamentals", "7", "One clean, testable filter (premarket volume ratio); no news or catalyst layer yet."],
+                ["Intraday Fundamentals", "8", "Premarket volume ratio plus an EDGAR check: earnings and 8-K mornings are excluded on evidence."],
                 ["Stock Selection", "7", "Single stocks with range; ETFs and small caps excluded for stated reasons."],
                 ["Technical Analysis", "8", "Level, read and exit are all defined on one chart and were simulated without look-ahead."],
                 ["Trade Strategy", "7", "Rule is explicit and reproducible; chosen in-sample, so provisional."],
@@ -241,7 +248,7 @@ def fl_deck():
     d.bullets(s, [
         "Setup:: the 15-minute 9-EMA crosses the 34-SMA on a regular-hours chart with volume above 1.5× the 20-bar average. Enter at the next bar's open.",
         "When:: entries from 09:45 to 11:00 only. The first bar after the open carries most of the edge; entries after 11:00 lose.",
-        "Stock selection:: single stocks from the morning in-play list; no ETFs or commodities.",
+        "Stock selection:: single stocks from the morning in-play list; no ETFs or commodities. Prefer a name with an earnings release or 8-K in the prior 24 hours: those trades earn four times as much per unit of risk.",
         "Exit:: 0.75×ATR stop moved to breakeven at +0.5R, hold to the close. No target.",
         f"Evidence:: {st['trades']} simulated trades over three years, {st['r']:+.0f}R, max drawdown {st['dd']:.1f}R, +65R after 5¢ of stop slippage.",
         "How to start:: trade it at 1R in simulation; half the trades scratch at breakeven by design, and one in ten pays for everything.",
@@ -265,6 +272,7 @@ def fl_deck():
         "The cross:: on the 09:30–09:45 bar the 9-EMA closed above the 34-SMA on a regular-hours 15-minute chart, with the bar's volume above 1.5× the average of the prior 20 bars.",
         "First bar after the open:: this is where the rule earns. Over three years the 09:45 entries made +150R on 1,073 trades; 10:00 entries +36R on 614; 10:45 entries lost.",
         "Universe:: the single stocks from the morning lists (16 names in the test); the seven ETFs and commodities lost money under this rule and are excluded.",
+        "Catalyst:: MSTR had no filing that morning, which is the common case (90% of trades). Earnings and 8-K mornings are 9% of the trades and 30% of the profit, +0.29R a trade against +0.07R; after 5¢ of stop slippage they are three quarters of what is left.",
     ], h=Inches(2.6), size=14)
     d.table(s, [["Stat", "Value", "Stat", "Value"],
                 ["Trades, 3 years", st["trades"], "Win rate", f"{st['wr']*100:.1f}% ({st['n_flat']} breakeven scratches)"],
@@ -280,10 +288,17 @@ def fl_deck():
     s = d.slide("Technical Analysis (extra)", "The first two hours on 1-minute bars: entry at the 09:45 open, stop 0.75×ATR, breakeven after the first bar shows +0.5R")
     d.picture(s, "fl_fill.png", w=Inches(11.8))
 
+    s = d.slide("Intraday Fundamentals: Catalysts", "SEC EDGAR 8-K filings joined to every trade day · catalyst mornings are the richer trade and the friction-proof one")
+    d.picture(s, "fl_catalyst.png", w=Inches(11.8))
+    d._text(s, Inches(0.5), Inches(6.0), Inches(12.3), Inches(0.9),
+            "Earnings and other-8-K reaction days: 204 trades, +59R, +0.29R each, +48R after 5¢ of stop slippage. Every other day: 2,078 trades, +142R, +0.07R each, "
+            "+17R after slippage. The chance that a random 204-trade subset does this well is under 1%.", 11, False, MUTED)
+
     s = d.slide("Trade Strategy", "The rule, as backtested (backtest_fl_week.py --bar-minutes 15 --rth-only --warmup-days 4 --stop-mult 0.75 --size-mult 1.5 --be-after 0.5 --last-entry 11:00)")
     d.bullets(s, [
         "Chart:: 15-minute, regular hours only, 9-EMA and 34-SMA warm from four prior sessions.",
         "Signal:: a completed bar whose close moves the 9-EMA across the 34-SMA, with that bar's volume above 1.5× the average of the 20 bars before it. Crosses printed on a prior day's bar do not count.",
+        "Catalyst:: when more signals fire than you can take, take the names with an earnings release or 8-K in the prior 24 hours first. Without a catalyst, take the trade only if your measured stop slippage is under two cents.",
         "Entry:: market at the open of the next bar, 09:45 to 11:00 only. Two entries per name per day at most.",
         "Stop:: 0.75 × ATR(14) of the 15-minute chart. Size = 1R ÷ (1.5 × ATR), so the position is half what the stop alone would allow; 1R is the amount you risk per trade.",
         "Breakeven:: once a completed bar has shown +0.5R in favour, move the stop to entry.",
@@ -346,7 +361,7 @@ def fl_deck():
     s = d.slide("Score Card", "Self-graded 1–10 against the SMB rubric")
     d.table(s, [["Area", "Grade", "Reason"],
                 ["Big Picture", "6", "Breadth gate exists in the driver; no index-regime filter has been tested."],
-                ["Intraday Fundamentals", "6", "In-play names only; no catalyst or news scoring yet."],
+                ["Intraday Fundamentals", "8", "In-play names plus an EDGAR check; catalyst mornings carry the friction-adjusted edge."],
                 ["Stock Selection", "7", "Single stocks only, ETFs excluded on evidence; universe is still today's names run backwards."],
                 ["Technical Analysis", "8", "Cross, volume, stop, breakeven and exit are all on one chart and reproducible."],
                 ["Trade Strategy", "7", "Explicit and backtested; the rule text was checked against plotted trades."],

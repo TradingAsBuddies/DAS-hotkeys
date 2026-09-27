@@ -30,6 +30,9 @@ history reads top to bottom.
 
 ## Next
 
+-2. **Catalyst attribution (2026-09-27, `docs/forward-tests/catalysts-2023-2026.md`).** EDGAR 8-K join: the
+   34-SMA play loses on earnings/8-K mornings (exclude them: +114R, +69R after slippage); FL earns 4× per
+   trade on them and they carry the friction-adjusted edge. Next: an EDGAR check in the morning scan.
 -1. **FL gate correction (2026-09-27).** The 15-minute regular-hours FL results before this date let a
    cross on the prior day's last bar be entered at the 09:30 open; corrected improved rule is +201R
    (was +292R), +65R with 5¢ slip. The overnight cross itself (+242R on 387 trades) is an untested
