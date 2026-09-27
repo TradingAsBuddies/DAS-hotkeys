@@ -167,7 +167,7 @@ def equity(trades, r_of, fname, title):
     fig, ax = plt.subplots(figsize=(11, 4.2), dpi=130)
     ax.plot(xs, ys, color="#1565c0", lw=1.5)
     ax.fill_between(xs, ys, 0, color="#1565c0", alpha=0.08)
-    ax.set_title(f"{title} · cumulative R, 1R = $75 · max drawdown {dd_max:.1f}R", fontsize=9.5, loc="left")
+    ax.set_title(f"{title} · cumulative R · max drawdown {dd_max:.1f}R", fontsize=9.5, loc="left")
     ax.set_ylabel("R")
     fig.tight_layout()
     fig.savefig(OUT / fname)

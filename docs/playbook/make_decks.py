@@ -22,7 +22,8 @@ ST = json.loads((BUILD / "stats.json").read_text())
 FONT = "Lato"
 INK, MUTED, ACCENT = RGBColor(0x1A, 0x1B, 0x26), RGBColor(0x66, 0x66, 0x66), RGBColor(0x2E, 0x7D, 0xE9)
 FOOTER = ("Hypothetical backtest results on Massive.com minute data; simulated trades were not executed and do not reflect "
-          "slippage, commissions or liquidity except where stated. Not investment advice. PlayBook format after SMB Training.")
+          "slippage, commissions or liquidity except where stated. Not investment advice. Trading As Buddies · "
+          "github.com/TradingAsBuddies/DAS-hotkeys · PlayBook format after SMB Training (not affiliated).")
 
 
 class Deck:
@@ -94,7 +95,7 @@ def ev_rows(st, slip_r=None):
     ev = wr * aw - (1 - wr) * al
     rows = [["Input", "Value", "Note"],
             ["Win rate", f"{wr*100:.1f}%", f"{st['n_win']} winners / {st['trades']} trades" + (f" ({st['n_flat']} breakeven scratches)" if st.get("n_flat") else "")],
-            ["Average winner", f"+{aw:.2f}R", "1R = the planned stop distance × shares = $75 in SIM"],
+            ["Average winner", f"+{aw:.2f}R", "1R = your risk per trade = planned stop distance × shares"],
             ["Average loser", f"−{al:.2f}R", "smaller than 1R: gap-through and breakeven exits"],
             ["Expectancy per trade", f"{ev:+.3f}R", "wr × avg win − (1 − wr) × avg loss"],
             ["Three-year total", f"{st['r']:+.0f}R", f"max drawdown {st['dd']:.1f}R · daily Sharpe {st['sharpe']:.2f}"]]
@@ -106,14 +107,14 @@ def ev_rows(st, slip_r=None):
 def sma34_deck():
     st, ex = ST["sma34"], ST["sma34"]["example"]
     d = Deck()
-    s = d.slide("34-SMA Premarket Trend", "SMB PlayBook · davdunc · example trade RKLB · May 11, 2026")
+    s = d.slide("34-SMA Premarket Trend", "A Trading As Buddies PlayBook · example trade RKLB · May 11, 2026")
     d.bullets(s, [
         "Setup:: a limit order placed before the bell at the 34-SMA of the extended-hours 15-minute chart, in the direction of the premarket trend.",
         "Trend read:: 15-minute 9-EMA above the premarket VWAP → long; below → short. Read once, pre-open.",
         "Stock selection:: medium and large caps with premarket volume at least 2× their own 20-day median.",
         "Exit:: 1.0×ATR stop, no target; exit on the first 15-minute close back across the 9-EMA. Flat at 15:55.",
         f"Evidence:: {st['trades']} simulated trades over three years on 14 names, {st['r']:+.0f}R, +35R after 5¢ of stop slippage.",
-        "Status:: 1R paper experiment. Every element of this rule was chosen after seeing the data; treat the numbers as in-sample.",
+        "How to start:: trade it at 1R in simulation until you have twenty stop fills to measure. Every element of this rule was chosen after seeing the data; treat the numbers as in-sample.",
     ], size=16)
 
     o, c = ST["index"]["sma34_SPY"]
@@ -134,7 +135,7 @@ def sma34_deck():
         f"Premarket volume {ex['pm_ratio']}× its 20-day median premarket volume:: the only stock-selection filter. Two to three times is the sweet spot; above five it trades worse.",
         "Pre-open read at 09:15:: 9-EMA 105.09 above the premarket VWAP 105.04, so the trend was up and the order was a buy.",
         "Level:: the 34-SMA of the extended-hours 15-minute chart at 104.41, below the 09:29 price, so the limit rested away from the market.",
-        "Universe:: AMD BB CRWD DELL DRI INTC IONQ META MSTR NVDA RKLB SMCI TSLA XOM. No ETFs, commodities or small caps: the tight stop needs single-stock range and the premarket-volume filter needs a name with a normal premarket.",
+        "Universe:: your in-play list of medium and large caps (tested on AMD BB CRWD DELL DRI INTC IONQ META MSTR NVDA RKLB SMCI TSLA XOM). No ETFs, commodities or small caps: the stop needs single-stock range and the premarket filter needs a name with a normal premarket.",
     ], h=Inches(2.6), size=14)
     d.table(s, [["Stat", "Value", "Stat", "Value"],
                 ["Trades, 3 years", st["trades"], "Win rate", f"{st['wr']*100:.1f}%"],
@@ -160,15 +161,15 @@ def sma34_deck():
         "Order:: limit at the 34-SMA value of the last completed 15-minute bar before 09:30. Only if the 09:29 price is on the trade side of it (buy below the market, sell short above it).",
         "Stop:: 1.0 × ATR(14) of the 15-minute chart, entered with the order as a bracket.",
         "Target:: none. Exit on the first 15-minute bar that closes back across the 9-EMA, after at least one bar has closed with the trade.",
-        "Time:: order live 09:30 to 15:00; anything still open is flat at 15:55. One entry per name per day; one position per day if that is the account rule.",
-        "Size:: shares = 1R ÷ stop distance, 1R = $75 in SIM (TR4425), $28 live, per PREFERENCES.md R-CONFIG. Cap 300 shares.",
+        "Time:: order live 09:30 to 15:00; anything still open is flat at 15:55. One entry per name per day. Simplest form: one position a day, in the name with the heaviest premarket (+32R on 230 trades).",
+        "Size:: shares = 1R ÷ stop distance, where 1R is the amount you risk per trade (we test at a tenth of a percent of capital). Cap size to what the name's liquidity fills cleanly.",
         "Do not:: re-price the order intraday, take a second fill, or hold a name that never closes a 15-minute bar with the trade past 12:00.",
     ], size=13)
 
     s = d.slide("Trade Management", f"{ex['sym']} {ex['day']} as it was simulated")
     d.table(s, [["Step", "Time", "Price", "Detail"],
                 ["Pre-open read", "09:15", "9-EMA 105.09 vs PM VWAP 105.04", "long; 34-SMA 104.41; ATR 1.37"],
-                ["Order placed", "before 09:30", "buy limit 104.41", f"stop 103.04 (1.0×ATR); {ex['qty']} shares = $75 ÷ 1.37"],
+                ["Order placed", "before 09:30", "buy limit 104.41", f"stop 103.04 (1.0×ATR); shares = 1R ÷ 1.37"],
                 ["Fill", ex["entry_t"], f"{ex['entry']:.2f}", "opening drive trades down to the level, then reverses"],
                 ["Stop check", "09:30–09:45", "low held above 103.04", "the 0.75×ATR stop would have been 103.38: also held here, not in most cases"],
                 ["Armed", "09:45", "09:30 bar closed above the 9-EMA", "the 9-EMA exit is now live"],
@@ -191,12 +192,12 @@ def sma34_deck():
 
     s = d.slide("Technology", "Everything the trade needs is scripted; the human job is the 09:15 read and the order")
     d.bullets(s, [
-        "Scan:: fl_forward_test.py breadth and gameplan reader; premarket-ratio filter is the --pm-vol-mult logic in backtest_sma34_trend.py, to be lifted into the driver.",
-        "Order:: DAS bracket via the CMD API (SCRIPT montage1 …): limit at the level, SLP stop at 1.0×ATR, sized by the R-CONFIG unit. Refuses without an ATR value.",
-        "Exit:: 9-EMA close monitor on 15-minute bars, same pattern as the FL driver's ema9 exit; breakeven and flatten paths already exist (22-fl-flatten.das).",
-        "Chart:: DAS 15-minute with extended hours ON, studies 9-EMA, 34-SMA, VWAP (premarket); the regular-hours chart gives a different level and a worse result for this form.",
-        "Safety:: paper account TR4425 only until twenty live stop fills are measured; the driver halts new entries when the montage name is lost (the 09-25 failure).",
-        "Reproduce:: docs/forward-tests/sma34-trend-3y.md, backtest/results/sma34-3y-preopen-ext-ema-s10.json.",
+        "Scan (09:15):: any scanner that shows premarket volume against the name's own average; the rule is today's premarket volume ÷ the 20-day median premarket volume ≥ 2.",
+        "Chart:: 15-minute with extended hours ON, studies 9-EMA, 34-SMA and VWAP reset at 04:00 (premarket). A regular-hours chart gives a different level and a worse result for this form.",
+        "Order:: a bracket placed before 09:30: limit at the 34-SMA value, stop 1.0×ATR away, quantity = 1R ÷ stop distance. In DAS Trader Pro that is one hotkey script; the open-source version is in the repo (scripts/).",
+        "Exit:: watch the 15-minute closes against the 9-EMA; the exit is a market order at the open of the bar after the first close back across it. This can be a chart alert or a script.",
+        "Backtest:: backtest/backtest_sma34_trend.py in the repo reproduces every number in this deck from Massive.com (Polygon) flat files; report in docs/forward-tests/sma34-trend-3y.md.",
+        "Safety:: simulation first, one R, until you have measured twenty of your own stop fills against the stop price.",
     ], size=13)
 
     s = d.slide("Trade Review", "What the three years say to do better")
@@ -206,7 +207,7 @@ def sma34_deck():
         "It is a runner strategy with a 27% win rate:: four trades in ten stop within minutes, one in four pays. Size for that, not for the win rate.",
         "In-sample:: chart type, stop width and exit were chosen after seeing the data. 2024 was flat; the three months of 2023 supplied 38 of the 86R. A walk-forward that picks the premarket band on 2024 alone is the next test.",
         "Fills:: touch-equals-fill at the limit and clean stop fills are assumed. Requiring a 1¢ trade-through cost 4R; five cents of stop slippage cost 51R.",
-        "Next:: measure live stop slippage on TR4425; add --entry-window and the premarket scan to the driver; write the DAS bracket hotkey for the pre-open order.",
+        "Next:: measure your live stop slippage in simulation; test an entry window; run a walk-forward on the premarket band before sizing above 1R.",
     ], x=Inches(0.5), w=Inches(7.6), size=12)
     d.picture(s, "sma34_equity.png", x=Inches(8.2), y=Inches(1.6), w=Inches(4.9))
 
@@ -225,7 +226,7 @@ def sma34_deck():
                 ["Trade Strategy", "7", "Rule is explicit and reproducible; chosen in-sample, so provisional."],
                 ["Risk Management", "6", "Stop is defined and sized; stop-fill slippage is unmeasured and decides the edge."],
                 ["Reading the Tape", "5", "Tape rules are written from the simulation, not from watching fills yet."],
-                ["Technology", "8", "Backtester, driver, CMD API harness and flatten paths exist; pre-open bracket hotkey still to write."],
+                ["Technology", "7", "Backtester and DAS scripts are open source; the pre-open bracket is one hotkey; the 9-EMA exit still needs an alert or script."],
                 ["Review: what can you do better?", "7", "Walk-forward, live slippage, entry window; all listed and scheduled."]],
             col_w=[3.4, 1.0, 7.9], size=12)
     out = ROOT / "docs/playbook/PlayBook-34SMA-Premarket-Trend.pptx"
@@ -236,14 +237,14 @@ def sma34_deck():
 def fl_deck():
     st, ex = ST["fl"], ST["fl"]["example"]
     d = Deck()
-    s = d.slide("Fashionably Late", "SMB PlayBook · davdunc · 15-minute 9-EMA × 34-SMA cross · example trade MSTR · August 27, 2026")
+    s = d.slide("Fashionably Late", "A Trading As Buddies PlayBook · 15-minute 9-EMA × 34-SMA cross · example trade MSTR · August 27, 2026")
     d.bullets(s, [
         "Setup:: the 15-minute 9-EMA crosses the 34-SMA on a regular-hours chart with volume above 1.5× the 20-bar average. Enter at the next bar's open.",
         "When:: entries from 09:45 to 11:00 only. The first bar after the open carries most of the edge; entries after 11:00 lose.",
         "Stock selection:: single stocks from the gameplan; no ETFs or commodities.",
         "Exit:: 0.75×ATR stop moved to breakeven at +0.5R, hold to the close. No target.",
         f"Evidence:: {st['trades']} simulated trades over three years, {st['r']:+.0f}R, max drawdown {st['dd']:.1f}R, +65R after 5¢ of stop slippage.",
-        "Correction 2026-09-27:: an earlier figure of +292R included 387 entries at the 09:30 open on a cross printed on the prior day's last bar; those are a different trade and are removed here.",
+        "How to start:: trade it at 1R in simulation; half the trades scratch at breakeven by design, and one in ten pays for everything.",
     ], size=15)
 
     o, c = ST["index"]["fl_SPY"]
@@ -260,10 +261,10 @@ def fl_deck():
 
     s = d.slide("Intraday Fundamentals", f"Why {ex['sym']} qualified on {ex['day']}")
     d.bullets(s, [
-        "Gameplan name:: MSTR was on the in-play list; FL is only run on the day's gameplan tickers, single stocks only.",
+        "In-play name:: MSTR was on the morning in-play list. Run FL only on that day's in-play single stocks; it is not a scan of the whole market.",
         "The cross:: on the 09:30–09:45 bar the 9-EMA closed above the 34-SMA on a regular-hours 15-minute chart, with the bar's volume above 1.5× the average of the prior 20 bars.",
         "First bar after the open:: this is where the rule earns. Over three years the 09:45 entries made +150R on 1,073 trades; 10:00 entries +36R on 614; 10:45 entries lost.",
-        "Universe:: the 16 single stocks of the gameplans; the seven ETFs and commodities lost money under this rule and are excluded.",
+        "Universe:: the single stocks from the morning lists (16 names in the test); the seven ETFs and commodities lost money under this rule and are excluded.",
     ], h=Inches(2.6), size=14)
     d.table(s, [["Stat", "Value", "Stat", "Value"],
                 ["Trades, 3 years", st["trades"], "Win rate", f"{st['wr']*100:.1f}% ({st['n_flat']} breakeven scratches)"],
@@ -284,17 +285,17 @@ def fl_deck():
         "Chart:: 15-minute, regular hours only, 9-EMA and 34-SMA warm from four prior sessions.",
         "Signal:: a completed bar whose close moves the 9-EMA across the 34-SMA, with that bar's volume above 1.5× the average of the 20 bars before it. Crosses printed on a prior day's bar do not count.",
         "Entry:: market at the open of the next bar, 09:45 to 11:00 only. Two entries per name per day at most.",
-        "Stop:: 0.75 × ATR(14) of the 15-minute chart, sized as if it were 1.5×ATR (the SIM convention), 1R = $75 SIM / $28 live.",
+        "Stop:: 0.75 × ATR(14) of the 15-minute chart. Size = 1R ÷ (1.5 × ATR), so the position is half what the stop alone would allow; 1R is the amount you risk per trade.",
         "Breakeven:: once a completed bar has shown +0.5R in favour, move the stop to entry.",
         "Exit:: hold to the close (flat at 15:55). No target, no partials: partial profit at +1R cut the three-year result by 85%.",
         "Do not:: trade the 1-minute cross (−7,680R over three years), enter after 11:00, or use a 9-EMA trail on 1-minute bars (−1,395R).",
-        "Breadth gate:: the driver suppresses a signal whose side disagrees with $VOLD; keep it, it filtered direction correctly on 09-25.",
+        "Breadth gate:: skip a signal whose side disagrees with the sign of $VOLD (NYSE up-volume minus down-volume) at the time of the cross.",
     ], size=13)
 
     s = d.slide("Trade Management", f"{ex['sym']} {ex['day']} as it was simulated")
     d.table(s, [["Step", "Time", "Price", "Detail"],
                 ["Cross", f"{ST['fl']['signal_bar']} bar close", "9-EMA crosses above the 34-SMA", "bar volume above 1.5× the 20-bar average"],
-                ["Entry", ex["entry_t"][11:16], f"{ex['entry']:.2f}", f"open of the next bar + 0.15 slip; {ex['qty']} shares"],
+                ["Entry", ex["entry_t"][11:16], f"{ex['entry']:.2f}", f"open of the next bar + 0.15 slip; shares = 1R ÷ (1.5 × ATR)"],
                 ["Initial stop", ex["entry_t"][11:16], f"{ST['fl']['stop0']:.2f}", f"0.75 × ATR {ex['atr']:.2f}"],
                 ["Breakeven", "10:00", f"{ex['entry']:.2f}", "the 09:45 bar showed more than +0.5R; stop to entry"],
                 ["Exit", ex["exit_t"][11:16], f"{ex['exit']:.2f}", "flat at the close"],
@@ -307,7 +308,7 @@ def fl_deck():
 
     s = d.slide("Reading the Tape", "What to watch on the cross bar and the bar after it")
     d.bullets(s, [
-        "Volume persistence:: the cross bar's volume must be followed; the 50/2 rule from the LGCL review (each of the next two bars at least half the cross bar's volume) is the tape version of the 1.5× filter.",
+        "Volume persistence:: the cross bar's volume must be followed. The 50/2 rule: each of the next two bars prints at least half the cross bar's volume, or exit at that bar's close and do not re-enter on the same signal.",
         "The 09:45 open:: the entry is at the market; a wide spread or a print far from the 09:45 15-minute open is the slippage the backtest does not model.",
         "First bar after entry:: +0.5R moves the stop to breakeven. On the tape that is the bar that has to hold above the 9-EMA; if it closes back below, the scratch is coming.",
         "Level to watch:: the entry price. After breakeven the trade is free; the runner is the one that never revisits it.",
@@ -316,22 +317,22 @@ def fl_deck():
 
     s = d.slide("Technology", "Built and tested against DAS on the paper account")
     d.bullets(s, [
-        "Driver:: tools/fl_forward_test.py reads the DAS gameplan file, evaluates completed bars, injects entries through the CMD API into montage1, verifies every injection and halts on a lost window name.",
-        "Scripts:: 20-fl-long.das / 21-fl-short.das place the entry with the 1.5×ATR stop; 22-fl-flatten.das closes by side and quantity; 00 loads the desktop.",
-        "Harness:: tools/das_script_test.py runs, checks and dismisses script errors over the CMD API; docs/CMD-API-TESTING.md.",
-        "Backtest:: backtest/backtest_fl_week.py on Massive flat files; gate fixed 2026-09-27 (entry-bar time, no prior-day crosses).",
-        "Still to build:: --bar-minutes 15 mode in the driver, breakeven order update through %OrderAct, entry window 09:45–11:00, single-stock filter from the gameplan.",
-        "Lesson from 09-25:: name montage1 by hand and File → Save Desktop; the driver now refuses to trade a window it cannot verify.",
+        "Chart:: 15-minute, regular hours only, 9-EMA and 34-SMA, volume with a 20-bar average. The cross must be visible on this chart, not on a 1-minute chart.",
+        "Entry:: market order at the 09:45 (or later) bar open, with a stop 0.75×ATR away entered at the same time. In DAS Trader Pro this is one hotkey; open-source scripts are in the repo (scripts/20-fl-long.das, 21-fl-short.das).",
+        "Breakeven:: after the first completed bar shows +0.5R, move the stop to entry. A stop-order update or a chart alert both work.",
+        "Breadth:: keep $VOLD, $TICK and $ADD on screen at the cross; the side must agree with $VOLD.",
+        "Backtest:: backtest/backtest_fl_week.py in the repo reproduces every number here from Massive.com (Polygon) flat files; report in docs/forward-tests/fl-3y-2023-2026.md.",
+        "Safety:: simulation first at 1R; the rule is only as good as your stop fills, and those are yours to measure.",
     ], size=13)
 
     s = d.slide("Trade Review", "What the three years say to do better")
     d.bullets(s, [
         "The 1-minute rule as traded on 09-24 has no edge:: 13 of 13 stops live, −7,680R over three years. The 15-minute chart is the setup.",
         "The edge is the first bar:: 09:45 entries carry three quarters of the profit. Everything after 11:00 is negative.",
-        "The gate error:: until today the backtest let a cross on yesterday's last bar be bought at the open. Those 387 trades made +242R and are a different, untested idea (see the report). Removing them leaves +201R.",
+        "Check your backtest against a chart:: an earlier run let a cross on the prior day's closing bar be bought at the open, which inflated the result by 90R. Those overnight trades are a different, untested idea.",
         "Win rate cannot be bought:: partials raise it and destroy the P&L; the return is the tail of runners into the close.",
         "Friction:: +65R after 5¢ stop slippage; first-bar entries alone +82R. Measure live stop fills before sizing.",
-        "Next:: driver flags for the 15-minute rule, breakeven via %OrderAct, walk-forward on the entry window, and a separate test of the overnight cross.",
+        "Next:: measure live stop fills in simulation, walk-forward the entry window, and test the overnight cross as its own setup.",
     ], x=Inches(0.5), w=Inches(7.6), size=12)
     d.picture(s, "fl_equity.png", x=Inches(8.2), y=Inches(1.6), w=Inches(4.9))
 
@@ -348,11 +349,11 @@ def fl_deck():
                 ["Intraday Fundamentals", "6", "Gameplan names only; no catalyst or news scoring yet."],
                 ["Stock Selection", "7", "Single stocks only, ETFs excluded on evidence; universe is still today's names run backwards."],
                 ["Technical Analysis", "8", "Cross, volume, stop, breakeven and exit are all on one chart and reproducible."],
-                ["Trade Strategy", "7", "Explicit and backtested; the gate error shows how a definition can drift from the chart."],
+                ["Trade Strategy", "7", "Explicit and backtested; the rule text was checked against plotted trades."],
                 ["Risk Management", "7", "Breakeven at +0.5R keeps the drawdown to 12R; stop slippage still unmeasured live."],
                 ["Reading the Tape", "6", "50/2 volume persistence rule exists and is enforceable; not yet validated across a sample."],
-                ["Technology", "8", "Driver, scripts, harness and backtester exist and were exercised live; 15-minute driver mode pending."],
-                ["Review: what can you do better?", "8", "Two live days reviewed, both failures diagnosed to cause; corrections shipped as releases."]],
+                ["Technology", "7", "Open-source DAS scripts and backtester; entry and stop are one hotkey; breakeven update is manual or scripted."],
+                ["Review: what can you do better?", "8", "Live trials reviewed to cause, backtest checked against the chart, corrections published."]],
             col_w=[3.4, 1.0, 7.9], size=12)
     out = ROOT / "docs/playbook/PlayBook-Fashionably-Late.pptx"
     d.save(out)

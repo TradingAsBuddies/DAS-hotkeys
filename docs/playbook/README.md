@@ -1,6 +1,6 @@
 # PlayBooks (SMB format)
 
-Two decks in the SMB PlayBook slide order (Title · Bigger Picture · Intraday Fundamentals · Technical
+Two decks, written to be shared: the rule, the evidence and the caveats, with no account-specific sizing or tooling. SMB PlayBook slide order (Title · Bigger Picture · Intraday Fundamentals · Technical
 Analysis · Trade Strategy · Trade Management · Reading the Tape · Technology · Trade Review · EV
 Calculator · Score Card), rebuilt from scratch with python-pptx because the 9.7 MB SMB template is
 copyright SMB Training and is not in this repo.
