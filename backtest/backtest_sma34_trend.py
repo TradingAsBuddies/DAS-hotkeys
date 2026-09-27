@@ -17,6 +17,9 @@ Rule under test
   Session    entries from --gate (09:45) to --last-entry (15:00), flat at --eod (15:55).
              Positions are only managed on regular-hours prints (09:30-16:00).
   Sizing     1R = --risk dollars, shares = risk / stop distance, capped at --max-shares.
+  --preopen  David's stated form: side, level and ATR fixed from the last bar completed before
+             09:30 and the limit rests all day (use with --gate 09:30).  --one-per-day keeps
+             only the name with the heaviest premarket volume ratio each day.
 
 Bars: 15-minute, all sessions from 04:00 by default, or regular hours only with --rth-only
 (that is what a DAS chart without extended hours shows; the two give very different results,
@@ -90,33 +93,60 @@ def true_range_atr(bars: list[dict], n: int = 14) -> list:
     return atr
 
 
-def run_day(sym: str, day: date, idx: int, days: list[date], a) -> tuple[list[dict], str]:
-    """Trades on `day` (days[idx]).  Returns (trades, skip_reason) with skip_reason '' when
-    the day passed the premarket filter."""
+def run_day(sym: str, day: date, idx: int, days: list[date], a) -> tuple[list[dict], str, float]:
+    """Trades on `day` (days[idx]).  Returns (trades, skip_reason, pm_ratio); skip_reason is ''
+    when the day passed the premarket filter."""
     today = load_day(sym, day)
     if not today:
-        return [], "no data"
+        return [], "no data", 0.0
     pm_vwap, pm_vol = premarket(sym, day)
     if pm_vol <= 0:
-        return [], "no premarket"
+        return [], "no premarket", 0.0
     hist = [v for v in (premarket(sym, d)[1] for d in days[max(0, idx - a.baseline_days):idx]) if v > 0]
     if len(hist) < a.baseline_days // 2:
-        return [], "short baseline"
+        return [], "short baseline", 0.0
     ratio = pm_vol / statistics.median(hist)
     if ratio < a.pm_vol_mult:
-        return [], "quiet premarket"
+        return [], "quiet premarket", ratio
     if a.pm_vol_max and ratio > a.pm_vol_max:
-        return [], "premarket above max"
+        return [], "premarket above max", ratio
 
     bars15: list[dict] = []
     for d in days[max(0, idx - a.warmup_days):idx + 1]:
         bars15 += day_bars(sym, d, a.rth_only, a.bar_minutes)
     if len(bars15) < 35:
-        return [], "short history"
+        return [], "short history", ratio
     E9, S34, _, _ = indicator_series(bars15, 1)
     ATR = true_range_atr(bars15)
     start_of = {b["t"]: i for i, b in enumerate(bars15)}
     rth = load_day(sym, day, True)                    # manage only on regular-hours prints
+    if not rth:
+        return [], "no regular session", ratio
+
+    fixed = None                                      # --preopen: one setup for the whole day
+    if a.preopen:
+        pre = [i for i, b in enumerate(bars15) if b["t"].date() < day or (b["t"].hour, b["t"].minute) < RTH_OPEN]
+        j = pre[-1] if pre else None
+        # direction always from the extended-hours 9-EMA, the chart the premarket read is made on
+        if a.rth_only:
+            ext: list[dict] = []
+            for d in days[max(0, idx - a.warmup_days):idx + 1]:
+                ext += day_bars(sym, d, False, a.bar_minutes)
+            ext = [b for b in ext if b["t"].date() < day or (b["t"].hour, b["t"].minute) < RTH_OPEN]
+            e9_pre = indicator_series(ext, 1)[0][-1] if len(ext) >= 9 else None
+        else:
+            e9_pre = E9[j] if j is not None else None
+        last_pm = [b for b in today if (b["t"].hour, b["t"].minute) < RTH_OPEN][-1]["c"]
+        if j is not None and j >= 34 and S34[j] and ATR[j] and ATR[j] > 0 and e9_pre:
+            side = "SHORT" if e9_pre < pm_vwap else "LONG"
+            level, atr = S34[j], ATR[j]
+            away = last_pm < level if side == "SHORT" else last_pm > level    # limit rests away from market
+            wanted = not a.side or side == a.side
+            shallow = a.max_pull_atr <= 0 or abs(last_pm - level) <= a.max_pull_atr * atr
+            if away and wanted and shallow:
+                fixed = dict(ok=True, side=side, level=level, atr=atr)
+        if fixed is None:
+            return [], "", ratio
 
     trades: list[dict] = []
 
@@ -148,7 +178,9 @@ def run_day(sym: str, day: date, idx: int, days: list[date], a) -> tuple[list[di
         t = m["t"]
         hm = (t.hour, t.minute)
         key = t.replace(minute=t.minute - t.minute % a.bar_minutes, second=0, microsecond=0)
-        if ctx["key"] != key:
+        if fixed is not None:
+            ctx = dict(fixed, key=key)
+        elif ctx["key"] != key:
             i = start_of.get(key)
             j = (i - 1) if i is not None else None          # last COMPLETED bar
             ctx = {"key": key, "ok": False}
@@ -200,7 +232,7 @@ def run_day(sym: str, day: date, idx: int, days: list[date], a) -> tuple[list[di
             record(pos, t, stop_price(pos, m), "stop"); pos = None
     if pos:                                   # half day: no 15:55 bar, close on the last RTH bar
         record(pos, rth[-1]["t"], rth[-1]["c"], "eod")
-    return trades, ""
+    return trades, "", ratio
 
 
 def stats(trades: list[dict], risk: float, n_days: int) -> dict:
@@ -254,6 +286,8 @@ def main() -> int:
     ap.add_argument("--risk", type=float, default=75.0)
     ap.add_argument("--max-shares", type=int, default=300)
     ap.add_argument("--max-entries", type=int, default=1, help="entries per name per day")
+    ap.add_argument("--preopen", action="store_true", help="one resting limit per day, placed before the open at the pre-open 34-SMA")
+    ap.add_argument("--one-per-day", action="store_true", help="only the name with the highest premarket ratio each day")
     ap.add_argument("--fill-through", type=float, default=0.0, help="require the minute to trade this far past the level")
     ap.add_argument("--stop-slip", type=float, default=0.0, help="adverse slippage per share on stop fills")
     ap.add_argument("--side", default="", choices=["", "LONG", "SHORT"], help="take setups of one side only")
@@ -273,12 +307,17 @@ def main() -> int:
         if d < start:
             continue
         n_days += 1
+        day_tr: list[tuple[float, list[dict]]] = []
         for s in syms:
-            tr, skip = run_day(s, d, idx, days, a)
+            tr, skip, ratio = run_day(s, d, idx, days, a)
             if skip:
                 skips[skip] += 1
             else:
                 active += 1
+            day_tr.append((ratio, tr))
+        if a.one_per_day:                    # the single name with the heaviest premarket, if it set up
+            day_tr = [max(day_tr, key=lambda x: x[0])]
+        for _, tr in day_tr:
             trades += tr
     trades.sort(key=lambda t: (t["day"], t["entry_t"]))
 

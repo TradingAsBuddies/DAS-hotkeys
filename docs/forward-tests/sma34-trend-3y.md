@@ -128,6 +128,43 @@ traded, they do not stack drawdowns; that is worth something on its own.
 4. Next build: `--entry-window 10:00-14:00` in the driver, and a walk-forward that chooses the
    premarket band on 2024 alone and reads 2025–2026 blind.
 
+## Iteration 2: the order placed before the open, one position a day
+
+David's correction after the first pass: the limit is placed **before the open** at the 34-SMA as
+it stands pre-open, not re-priced bar by bar, and there is **one and only one position per day**.
+Implemented as `--preopen` (side, level and ATR fixed from the last bar completed before 09:30;
+direction always from the extended-hours 9-EMA against the premarket VWAP, since that is the
+chart the premarket read is made on; the order rests from 09:30 until 15:00) and `--one-per-day`
+(only the name with the heaviest premarket volume ratio that day). Same stop, target and sizing.
+
+| Pre-open resting order | Trades | Win rate | R | Max DD | Years (R) | With 5¢ stop slippage |
+|---|---:|---:|---:|---:|---|---:|
+| Extended-hours 34-SMA, every qualifying name | 733 | 33.7% | −14.3 | 53.5R | +8, −8, −25, +11 | −70.3 |
+| Regular-hours 34-SMA, every qualifying name | 357 | 34.2% | −13.0 | 28.6R | 0, −20, +7, 0 | −40.1 |
+| Extended-hours 34-SMA, one position a day | 230 | 33.9% | −6.1 | 23.9R | | −23.5 |
+| Regular-hours 34-SMA, one position a day | 113 | 31.9% | −3.2 | 10.9R | | −12.8 |
+| Regular-hours, order live from 09:45 instead of 09:30 | 312 | 34.6% | −0.3 | 16.0R | | |
+
+**Placed before the open, the setup is a coin flip before friction and a loser after it.** Every
+variant sits at a 32–35% win rate against the 35.7% breakeven for a 1.8R target, no variant is
+positive, and no year pattern repeats. With one position a day it trades about 40 times a year
+for nothing.
+
+The reason is visible in the fill times. Of the 733 extended-hours fills, **521 happen in the
+first fifteen minutes**, and 224 of 357 on the regular-hours level. A limit resting at the
+pre-open 34-SMA is mostly hit by the opening drive, which runs through the level rather than
+reacting to it; those first-fifteen-minute fills are net zero on the extended chart and −9R on
+the regular-hours chart. The fills that come later, after 10:00, are the ones with a small
+positive expectancy, and they are the same trades the bar-by-bar version above takes, which is
+why that version does better: it waits for the direction read to settle and moves the level with
+the SMA.
+
+So the one-position, pre-open form of the idea does not work on this data. What works, modestly,
+is the same level on a regular-hours chart entered between 10:00 and 14:00, re-read each bar
+(the +50.7R row above). If the rule must be a single resting order placed pre-open, the closest
+defensible version is to place it at 09:45 rather than 09:30 on the regular-hours level, which
+is flat (−0.3R), not a strategy.
+
 ## Reproduce
 
 ```bash
@@ -136,6 +173,7 @@ python3 backtest_sma34_trend.py                              # extended-hours ch
 python3 backtest_sma34_trend.py --rth-only                   # regular-hours chart: +50.7R
 python3 backtest_sma34_trend.py --rth-only --stop-slip 0.05  # friction: +18.7R
 python3 backtest_sma34_trend.py --rth-only --pm-vol-mult 1.0 --pm-vol-max 2.0   # quiet premarkets: -23.3R
+python3 backtest_sma34_trend.py --preopen --gate 09:30 --rth-only --one-per-day       # pre-open order, one a day: -3.2R
 # sweep: backtest/results/sma34-sweep.tsv (27 cells + 9 variants)
 ```
 
