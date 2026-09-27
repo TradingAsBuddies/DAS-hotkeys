@@ -241,7 +241,7 @@ def fl_deck():
     d.bullets(s, [
         "Setup:: the 15-minute 9-EMA crosses the 34-SMA on a regular-hours chart with volume above 1.5× the 20-bar average. Enter at the next bar's open.",
         "When:: entries from 09:45 to 11:00 only. The first bar after the open carries most of the edge; entries after 11:00 lose.",
-        "Stock selection:: single stocks from the gameplan; no ETFs or commodities.",
+        "Stock selection:: single stocks from the morning in-play list; no ETFs or commodities.",
         "Exit:: 0.75×ATR stop moved to breakeven at +0.5R, hold to the close. No target.",
         f"Evidence:: {st['trades']} simulated trades over three years, {st['r']:+.0f}R, max drawdown {st['dd']:.1f}R, +65R after 5¢ of stop slippage.",
         "How to start:: trade it at 1R in simulation; half the trades scratch at breakeven by design, and one in ten pays for everything.",
@@ -346,7 +346,7 @@ def fl_deck():
     s = d.slide("Score Card", "Self-graded 1–10 against the SMB rubric")
     d.table(s, [["Area", "Grade", "Reason"],
                 ["Big Picture", "6", "Breadth gate exists in the driver; no index-regime filter has been tested."],
-                ["Intraday Fundamentals", "6", "Gameplan names only; no catalyst or news scoring yet."],
+                ["Intraday Fundamentals", "6", "In-play names only; no catalyst or news scoring yet."],
                 ["Stock Selection", "7", "Single stocks only, ETFs excluded on evidence; universe is still today's names run backwards."],
                 ["Technical Analysis", "8", "Cross, volume, stop, breakeven and exit are all on one chart and reproducible."],
                 ["Trade Strategy", "7", "Explicit and backtested; the rule text was checked against plotted trades."],
