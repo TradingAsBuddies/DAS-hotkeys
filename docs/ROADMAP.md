@@ -10,6 +10,7 @@ history reads top to bottom.
 | Manual corpus fetched, extracted, synthesised (`WISDOM.md`) | pre-release |
 | Fashionably Late desktop layout, coil detector, signal locator, order-entry hotkeys (`00`–`08`) | pre-release |
 | 3-year, 1-minute backtest of the FL signal (`backtest/`) | pre-release |
+| 34-SMA premarket-trend pullback backtested three years on 15-minute bars (`backtest/backtest_sma34_trend.py`, `docs/forward-tests/sma34-trend-3y.md`): fails on extended-hours bars (−71R), +51R on regular-hours bars, +19R after 5¢ stop slippage | v0.4.0 |
 | Default desktop named from script: `montage1`, `hidden_chart1` (`10`) | v0.1.0 |
 | CMD API test harness: inject, observe via DAS log, clear dialogs (`tools/das_script_test.py`) | v0.1.0 |
 | Runtime script errors surfaced; MsgBox and notice dialogs dismissed; honest safety claims | v0.1.1 |
@@ -29,6 +30,10 @@ history reads top to bottom.
 
 ## Next
 
+0. **34-SMA pullback (regular-hours chart) as a second 1R experiment**: premarket volume 2–3× the
+   20-day median, limit at the regular-hours 34-SMA between 10:00 and 14:00, 0.75×ATR stop, 1.8R
+   target. Needs an `--entry-window` flag in the backtester, a driver mode for limit entries with
+   a bracket, and a walk-forward that picks the premarket band on 2024 alone.
 1. **Candidate rule confirmed thin over three years** (+169R paper, +270R with no entries
    after 15:00; friction-sensitive). Next: (a) measure real stop-fill slippage from the DAS
    execution log on the first twenty paper stops; (b) driver flags `--bar-minutes 15`,
