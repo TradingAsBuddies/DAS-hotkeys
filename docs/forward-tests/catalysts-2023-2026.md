@@ -116,5 +116,4 @@ under two cents.
 ```bash
 python3 backtest/catalysts/catalysts.py          # cached EDGAR JSON; add --refresh to re-pull
 ~/.venvs/playbook/bin/python backtest/catalysts/catalyst_charts.py   # equity curves by tag, exclusion tables, permutation test
-# built by backtest/catalysts/catalyst_charts.py, which also prints the exclusion tables)
 ```
