@@ -20,6 +20,8 @@ Rule under test
   --preopen  David's stated form: side, level and ATR fixed from the last bar completed before
              09:30 and the limit rests all day (use with --gate 09:30).  --one-per-day keeps
              only the name with the heaviest premarket volume ratio each day.
+  --exit-ema9-close  replace the target with a trail: exit at the first minute after a
+             completed 15m bar closes across the 9-EMA, once one bar has closed with the trade.
 
 Bars: 15-minute, all sessions from 04:00 by default, or regular hours only with --rth-only
 (that is what a DAS chart without extended hours shows; the two give very different results,
@@ -178,6 +180,17 @@ def run_day(sym: str, day: date, idx: int, days: list[date], a) -> tuple[list[di
         t = m["t"]
         hm = (t.hour, t.minute)
         key = t.replace(minute=t.minute - t.minute % a.bar_minutes, second=0, microsecond=0)
+        if a.exit_ema9_close and pos and ctx["key"] != key and pos["t"] < key:
+            # a 15-minute bar just completed: bar j = the one before this window
+            i = start_of.get(key)
+            j = (i - 1) if i is not None else None
+            if j is not None and E9[j]:
+                c = bars15[j]["c"]
+                with_trade = c > E9[j] if pos["side"] == "LONG" else c < E9[j]
+                if with_trade:
+                    pos["armed"] = True
+                elif pos.get("armed") or a.ema_exit_unarmed:
+                    record(pos, t, m["o"], "ema9"); pos = None
         if fixed is not None:
             ctx = dict(fixed, key=key)
         elif ctx["key"] != key:
@@ -279,6 +292,8 @@ def main() -> int:
     ap.add_argument("--stop-mult", type=float, default=0.75, help="stop distance in ATR(14, 15m)")
     ap.add_argument("--target-r", type=float, default=1.8, help="take profit in R (0 = none, hold to eod)")
     ap.add_argument("--be-after", type=float, default=0.0, help="move stop to entry after +R in favour (0 = off)")
+    ap.add_argument("--exit-ema9-close", action="store_true", help="exit when a completed 15m bar closes on the opposite side of the 9-EMA (after one close on the trade side)")
+    ap.add_argument("--ema-exit-unarmed", action="store_true", help="with --exit-ema9-close: do not wait for a close on the trade side first")
     ap.add_argument("--max-pull-atr", type=float, default=0.0, help="skip when last close is more than N ATR from the level (0 = off)")
     ap.add_argument("--gate", default="09:45")
     ap.add_argument("--last-entry", default="15:00")

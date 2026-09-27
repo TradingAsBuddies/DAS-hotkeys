@@ -165,6 +165,66 @@ is the same level on a regular-hours chart entered between 10:00 and 14:00, re-r
 defensible version is to place it at 09:45 rather than 09:30 on the regular-hours level, which
 is flat (−0.3R), not a strategy.
 
+## Iteration 3: exit on a 15-minute close across the 9-EMA instead of the 1.8R target
+
+David's question: with the order resting from the bell, is the sequence fill, then stop? And what
+if the exit is a 15-minute close on the opposite side of the 9-EMA rather than a fixed 1.8R?
+
+**The sequence, from the pre-open extended-hours run (733 fills).** 521 fills came in the first
+fifteen minutes, the median fill in the 09:31 minute. Of those 521, 344 were stopped, with a
+**median of one minute** from fill to stop; 307 of the 344 stops were inside five minutes. The 177
+that reached the target did so in a median of two minutes. So yes: the opening drive fills the
+resting order and the same drive's next minute decides the trade, because a 0.75×ATR stop on
+15-minute bars is smaller than the opening minute's range on a heavy-premarket-volume name.
+
+**The 9-EMA exit.** Implemented as `--exit-ema9-close`: after fill, the position is closed at the
+first minute after a completed 15-minute bar closes on the far side of the 9-EMA. Because a
+pullback fill is by construction on the wrong side of the 9-EMA already, the exit arms only after
+one completed bar has closed on the trade side; the stop stays active throughout. Target removed
+(`--target-r 0`); rows that keep the target alongside the trail are shown for completeness.
+
+| Pre-open resting order, 9-EMA exit | Trades | Win rate | R | Max DD | Years (R) | With 5¢ stop slippage |
+|---|---:|---:|---:|---:|---|---:|
+| Extended-hours chart, 0.75×ATR stop | 733 | 21.4% | **+58.4** | 40.0R | | −6.2 |
+| Extended-hours, 0.75×ATR stop, target kept | 733 | 34.2% | −10.4 | 50.2R | | |
+| Regular-hours chart, 0.75×ATR stop | 357 | 23.8% | +29.2 | 31.5R | +8, +10, −8, +19 | −1.9 |
+| Regular-hours, target kept | 357 | 34.2% | −13.1 | 28.7R | | |
+| Extended-hours, one position a day | 230 | 21.3% | +4.3 | 30.0R | | |
+| Regular-hours, one position a day | 113 | 23.0% | +13.0 | 14.9R | | +2.1 |
+| Exit unarmed (first opposite close, no wait) | 733 | 29.5% | +49.8 | 35.7R | | |
+
+The exit swap changes the sign: −14R becomes +58R on the extended chart and −13R becomes +29R on
+the regular-hours chart. The win rate falls to a fifth because the trail lets the runners go
+(winners average 3.7R against losers of 1.0R) while the target had capped them at 1.8R. But the
+loss side is untouched: stops are still 268 of 357 exits on the regular-hours chart and cost
+−218R against +183R from the trail and +65R from the close. Five cents of slippage on those
+stops takes the whole edge back.
+
+**One step further, because the stop is the problem, not the exit.** Widening the stop with the
+9-EMA exit in place (my addition, not part of the question):
+
+| Extended-hours chart, pre-open order, 9-EMA exit | Trades | Win rate | R | Max DD | Years (R) | 5¢ slip | One a day |
+|---|---:|---:|---:|---:|---|---:|---:|
+| Stop 0.75×ATR | 733 | 21.4% | +58.4 | 40.0R | | −6.2 | +4.3 |
+| **Stop 1.0×ATR** | 733 | 27.1% | **+86.5** | 35.4R | +38, −2, +13, +38 | **+35.3** | +31.9 |
+| Stop 1.5×ATR | 733 | 35.3% | +63.8 | 22.1R | +29, +1, +26, +7 | +28.6 | +31.0 |
+| Regular-hours chart, stop 1.5×ATR | 357 | 35.3% | +12.9 | 19.2R | | −2.8 | +0.8 |
+
+With a 1.0×ATR stop and the 9-EMA exit, the pre-open resting order on the extended-hours chart
+is +86.5R over three years and keeps +35R after five cents of slippage; one position a day makes
++32R on 230 trades. That is the best form of this idea found so far. Read it with care: 2024 is
+flat, the three months of 2023 supply 38R of the 86R, the ten largest wins are 144% of the net
+profit, and every element of this row (trail, stop width, chart) was chosen after seeing the
+data. The regular-hours chart, which was the better one for the intraday version, is the worse
+one here: its 34-SMA is farther from the open, so the resting order fills less often and later.
+
+**What it means.** The pre-open order is workable only with a trailing exit and a stop that is
+not inside the opening minute's range. As a 1R paper experiment: extended-hours 15-minute chart,
+premarket volume at least twice the 20-day median, limit at the pre-open 34-SMA, 1.0×ATR stop,
+no target, exit on the first 15-minute close back across the 9-EMA after one close with the
+trade, flat at 15:55. Expect a fill on one day in three, one win in four, and a P&L that depends
+on a handful of runners per year.
+
 ## Reproduce
 
 ```bash
@@ -174,6 +234,7 @@ python3 backtest_sma34_trend.py --rth-only                   # regular-hours cha
 python3 backtest_sma34_trend.py --rth-only --stop-slip 0.05  # friction: +18.7R
 python3 backtest_sma34_trend.py --rth-only --pm-vol-mult 1.0 --pm-vol-max 2.0   # quiet premarkets: -23.3R
 python3 backtest_sma34_trend.py --preopen --gate 09:30 --rth-only --one-per-day       # pre-open order, one a day: -3.2R
+python3 backtest_sma34_trend.py --preopen --gate 09:30 --exit-ema9-close --target-r 0 --stop-mult 1.0   # 9-EMA exit: +86.5R
 # sweep: backtest/results/sma34-sweep.tsv (27 cells + 9 variants)
 ```
 

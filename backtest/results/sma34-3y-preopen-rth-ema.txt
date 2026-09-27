@@ -1,0 +1,44 @@
+TOTAL 2023-09-25..2026-09-25   357  wr  23.8%  pnl      2,190  R    +29.2  /trade +0.082R  plan +0.132R  maxDD  31.5R  sharpe  0.38
+symbol-days: 10990, passed PM filter: 1920, skips: {'short baseline': 314, 'no premarket': 472, 'quiet premarket': 7850, 'no data': 434}
+exits: ema9 79, eod 10, stop 268
+
+by year
+  2023                          24  wr  16.7%  pnl        594  R     +7.9  /trade +0.330R  plan +0.094R  maxDD   6.1R  sharpe  1.10
+  2024                         150  wr  25.3%  pnl        774  R    +10.3  /trade +0.069R  plan +0.190R  maxDD  15.6R  sharpe  0.43
+  2025                         103  wr  25.2%  pnl       -578  R     -7.7  /trade -0.075R  plan -0.020R  maxDD  27.1R  sharpe -0.44
+  2026                          80  wr  21.2%  pnl      1,400  R    +18.7  /trade +0.233R  plan +0.232R  maxDD  20.1R  sharpe  0.76
+
+by side
+  LONG                         180  wr  26.7%  pnl        899  R    +12.0  /trade +0.067R  plan +0.126R  maxDD  28.9R  sharpe  0.27
+  SHORT                        177  wr  20.9%  pnl      1,291  R    +17.2  /trade +0.097R  plan +0.138R  maxDD  22.2R  sharpe  0.29
+
+by entry hour
+  09:00                        249  wr  20.9%  pnl        761  R    +10.2  /trade +0.041R  plan +0.115R  maxDD  33.2R  sharpe  0.15
+  10:00                         53  wr  28.3%  pnl        738  R     +9.8  /trade +0.186R  plan +0.187R  maxDD  13.9R  sharpe  0.36
+  11:00                         20  wr  40.0%  pnl        262  R     +3.5  /trade +0.174R  plan +0.152R  maxDD   3.3R  sharpe  0.27
+  12:00                         13  wr  30.8%  pnl        503  R     +6.7  /trade +0.516R  plan +0.568R  maxDD   6.3R  sharpe  0.40
+  13:00                         15  wr  26.7%  pnl        -27  R     -0.4  /trade -0.024R  plan -0.166R  maxDD   3.1R  sharpe -0.04
+  14:00                          7  wr  28.6%  pnl        -47  R     -0.6  /trade -0.089R  plan +0.097R  maxDD   3.0R  sharpe -0.09
+
+by premarket ratio
+  PM ratio 2-3                 171  wr  25.1%  pnl      2,399  R    +32.0  /trade +0.187R  plan +0.266R  maxDD  18.3R  sharpe  0.56
+  PM ratio 3-5                 110  wr  21.8%  pnl       -192  R     -2.6  /trade -0.023R  plan +0.019R  maxDD  33.6R  sharpe -0.06
+  PM ratio 5+                   76  wr  23.7%  pnl        -17  R     -0.2  /trade -0.003R  plan -0.005R  maxDD  11.4R  sharpe -0.01
+
+by ticker
+  AMD                           16  wr  25.0%  pnl        970  R    +12.9  /trade +0.808R  plan +0.805R  maxDD   4.1R  sharpe  0.49
+  BB                            38  wr  28.9%  pnl         29  R     +0.4  /trade +0.010R  plan +0.177R  maxDD   0.5R  sharpe  0.20
+  CRWD                          42  wr  16.7%  pnl       -397  R     -5.3  /trade -0.126R  plan -0.125R  maxDD  10.2R  sharpe -0.21
+  DELL                          35  wr  14.3%  pnl         77  R     +1.0  /trade +0.029R  plan +0.008R  maxDD  17.1R  sharpe  0.03
+  DRI                            4  wr  25.0%  pnl       -166  R     -2.2  /trade -0.554R  plan -0.556R  maxDD   3.0R  sharpe -0.67
+  INTC                          25  wr  28.0%  pnl      1,504  R    +20.0  /trade +0.802R  plan +1.325R  maxDD   3.4R  sharpe  0.66
+  IONQ                          29  wr  27.6%  pnl         92  R     +1.2  /trade +0.042R  plan +0.129R  maxDD   6.7R  sharpe  0.08
+  META                          37  wr  18.9%  pnl        389  R     +5.2  /trade +0.140R  plan +0.137R  maxDD  11.8R  sharpe  0.17
+  MSTR                          20  wr  40.0%  pnl        545  R     +7.3  /trade +0.363R  plan +0.358R  maxDD   3.1R  sharpe  0.51
+  NVDA                          16  wr  18.8%  pnl       -637  R     -8.5  /trade -0.530R  plan -0.537R  maxDD   9.9R  sharpe -1.08
+  RKLB                          25  wr  24.0%  pnl       -415  R     -5.5  /trade -0.221R  plan -0.224R  maxDD   8.8R  sharpe -0.72
+  SMCI                          34  wr  17.6%  pnl        163  R     +2.2  /trade +0.064R  plan -0.000R  maxDD  10.2R  sharpe  0.09
+  TSLA                           8  wr  25.0%  pnl       -243  R     -3.2  /trade -0.406R  plan -0.410R  maxDD   4.5R  sharpe -0.60
+  XOM                           28  wr  35.7%  pnl        281  R     +3.7  /trade +0.134R  plan +0.110R  maxDD   4.5R  sharpe  0.24
+
+wrote results/sma34-3y-preopen-rth-ema.json
