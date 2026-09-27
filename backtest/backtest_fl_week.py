@@ -286,8 +286,10 @@ def run_day(sym: str, bars: list[dict], a, day: date | None = None, fine: list[d
                 continue
         if not cross or pos or rt >= max_rt:
             continue
-        if done[-1]["t"].time() < gate:
+        if now["t"].time() < gate:
             continue
+        if not a.allow_overnight and done[-1]["t"].date() != now["t"].date():
+            continue                      # the cross printed on a prior day's bar: not an intraday signal
         if a.last_entry and now["t"].time() >= last_entry:
             continue
         if not a.hold_bars and a.vol_mult > 0:
@@ -361,6 +363,7 @@ def main() -> int:
     ap.add_argument("--partial", type=float, default=0.0, help="take half off at +R and move the stop to entry")
     ap.add_argument("--exclude", default="", help="comma list of symbols to drop from the universe")
     ap.add_argument("--stop-slip", type=float, default=0.0, help="adverse slippage per share on every stop fill")
+    ap.add_argument("--allow-overnight", action="store_true", help="pre-2026-09-27 behaviour: a cross on the prior day's last bar may be entered at today's open")
     a = ap.parse_args()
 
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)

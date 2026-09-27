@@ -30,6 +30,11 @@ history reads top to bottom.
 
 ## Next
 
+-1. **FL gate correction (2026-09-27).** The 15-minute regular-hours FL results before this date let a
+   cross on the prior day's last bar be entered at the 09:30 open; corrected improved rule is +201R
+   (was +292R), +65R with 5¢ slip. The overnight cross itself (+242R on 387 trades) is an untested
+   idea that needs its own study. SMB-format PlayBooks for FL and the 34-SMA play live in
+   `docs/playbook/` (decks built by `make_charts.py` + `make_decks.py`).
 0. **34-SMA pullback (regular-hours chart) as a second 1R experiment**: premarket volume 2–3× the
    20-day median, limit at the regular-hours 34-SMA between 10:00 and 14:00, 0.75×ATR stop, 1.8R
    target. Needs an `--entry-window` flag in the backtester, a driver mode for limit entries with
