@@ -49,8 +49,10 @@
 // ---- HOTKEY A : ENSURE ------------------------------------------------------
 
 // DAS does not register a variable assigned an empty string (ScriptError:1 "variable
-// $DD_CREATED not exist", 2026-09-28). Start from a sentinel and strip it in the report.
-$DD_CREATED = "none";
+// $DD_CREATED not exist", 2026-09-28), and it rejected a one-line "} else {"
+// ("Missing }", same day). Numeric flags, multi-line nested ifs, no else.
+$DD_M = 0;
+$DD_C = 0;
 
 // ---- montage1 ---------------------------------------------------------------
 // An existing montage1 is left exactly where it is.
@@ -76,7 +78,7 @@ if (isObject($dd_m) == 0) {
   WPos 0 0;
   WSize 520 900;
   $dd_m.SYMBOL = "SPY";
-  if ($DD_CREATED == "none") { $DD_CREATED = "montage1 "; } else { $DD_CREATED = $DD_CREATED + "montage1 "; }
+  $DD_M = 1;
 }
 
 // ---- hidden_chart1 ----------------------------------------------------------
@@ -97,7 +99,7 @@ if (isObject($dd_c) == 0) {
   $dd_sym = $dd_m.SYMBOL;
   if ($dd_sym == "") { $dd_sym = "SPY"; }
   $dd_c.SYMBOL = $dd_sym;
-  if ($DD_CREATED == "none") { $DD_CREATED = "hidden_chart1 "; } else { $DD_CREATED = $DD_CREATED + "hidden_chart1 "; }
+  $DD_C = 1;
 }
 
 // (Re)park the hidden chart EVERY press, created or not, so that after
@@ -120,11 +122,14 @@ TitleBar N;
 FocusWindow montage1;
 
 // ---- Report -----------------------------------------------------------------
-if ($DD_CREATED == "none") {
+$DD_ANY = $DD_M + $DD_C;
+if ($DD_ANY == 0) {
   MsgLog("10-ensure: montage1 and hidden_chart1 present; hidden_chart1 re-parked");
-} else {
-  MsgBox("Created: " + $DD_CREATED + "\n\n" +
-         "NOW: File > Save Desktop, or these names are lost on restart." + "\n" +
+}
+if ($DD_ANY > 0) {
+  MsgLog("10-ensure: created montage1=", $DD_M, " hidden_chart1=", $DD_C);
+  MsgBox("10-ensure created a window (see log for which)." + "\n\n" +
+         "NOW: File > Save Desktop, or the names are lost on restart." + "\n" +
          "THEN: add studies to hidden_chart1 (ShowAllHiddenWindows to reach it)," + "\n" +
          "      press this hotkey again to re-park it, and Save Desktop again.");
 }
