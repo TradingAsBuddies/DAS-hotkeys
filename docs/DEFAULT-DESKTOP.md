@@ -102,3 +102,13 @@ whichever is missing. It never creates them.
 Run both `01` and `10` and you get two montages stacked at the same pixel under two names.
 `10` proves naming is scriptable, so the clean fix is for `01` to set `.name` itself and
 for one name to win. That is a separate change; nothing here decides it.
+
+## 2026-09-28 — what a crash-restart does to the names
+
+DAS crashed at about 08:20 ET and was restarted. Afterwards `hidden_chart1` (saved with the
+desktop on 09-20) was present and `montage1` was not: the montage had been named after the last
+Save Desktop. The name was restored by hand (right-click the title bar > Name) and verified over
+the CMD API; the desktop was then saved. Two script-language facts came out of the same morning
+and are now baked into the scripts: a variable initialised to an empty string does not exist as
+far as DAS is concerned, and a one-line `} else {` fails to load. Neither window needs to be
+popped out for the scripts to find it; only the off-screen parking of `hidden_chart1` does.
