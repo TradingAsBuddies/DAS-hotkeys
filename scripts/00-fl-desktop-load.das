@@ -69,12 +69,14 @@ MsgBox("FL desktop loaded." + "\n" +
 // ---- Default-desktop check --------------------------------------------------
 // Checks only; 10-ensure-default-desktop.das creates. See docs/DEFAULT-DESKTOP.md.
 // VERIFIED 2026-09-20: GetWindowObj on a missing name returns a non-object, no error.
-$DD_MISSING = "";
+// DAS does not register a variable assigned an empty string (ScriptError:1 "variable
+// ... not exist", seen 2026-09-28); start from a sentinel instead.
+$DD_MISSING = "none";
 $dd_m = GetWindowObj("montage1");
 $dd_c = GetWindowObj("hidden_chart1");
-if (isObject($dd_m) == 0) { $DD_MISSING = $DD_MISSING + "montage1 "; }
-if (isObject($dd_c) == 0) { $DD_MISSING = $DD_MISSING + "hidden_chart1 "; }
-if ($DD_MISSING == "") {
+if (isObject($dd_m) == 0) { $DD_MISSING = "montage1 "; }
+if (isObject($dd_c) == 0) { if ($DD_MISSING == "none") { $DD_MISSING = "hidden_chart1 "; } else { $DD_MISSING = $DD_MISSING + "hidden_chart1 "; } }
+if ($DD_MISSING == "none") {
   MsgLog("desktop-load: montage1 and hidden_chart1 present");
 } else {
   MsgBox("Default desktop is missing: " + $DD_MISSING + "\n" +

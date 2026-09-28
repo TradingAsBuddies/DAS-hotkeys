@@ -48,7 +48,9 @@
 
 // ---- HOTKEY A : ENSURE ------------------------------------------------------
 
-$DD_CREATED = "";
+// DAS does not register a variable assigned an empty string (ScriptError:1 "variable
+// $DD_CREATED not exist", 2026-09-28). Start from a sentinel and strip it in the report.
+$DD_CREATED = "none";
 
 // ---- montage1 ---------------------------------------------------------------
 // An existing montage1 is left exactly where it is.
@@ -74,7 +76,7 @@ if (isObject($dd_m) == 0) {
   WPos 0 0;
   WSize 520 900;
   $dd_m.SYMBOL = "SPY";
-  $DD_CREATED = $DD_CREATED + "montage1 ";
+  if ($DD_CREATED == "none") { $DD_CREATED = "montage1 "; } else { $DD_CREATED = $DD_CREATED + "montage1 "; }
 }
 
 // ---- hidden_chart1 ----------------------------------------------------------
@@ -95,7 +97,7 @@ if (isObject($dd_c) == 0) {
   $dd_sym = $dd_m.SYMBOL;
   if ($dd_sym == "") { $dd_sym = "SPY"; }
   $dd_c.SYMBOL = $dd_sym;
-  $DD_CREATED = $DD_CREATED + "hidden_chart1 ";
+  if ($DD_CREATED == "none") { $DD_CREATED = "hidden_chart1 "; } else { $DD_CREATED = $DD_CREATED + "hidden_chart1 "; }
 }
 
 // (Re)park the hidden chart EVERY press, created or not, so that after
@@ -118,7 +120,7 @@ TitleBar N;
 FocusWindow montage1;
 
 // ---- Report -----------------------------------------------------------------
-if ($DD_CREATED == "") {
+if ($DD_CREATED == "none") {
   MsgLog("10-ensure: montage1 and hidden_chart1 present; hidden_chart1 re-parked");
 } else {
   MsgBox("Created: " + $DD_CREATED + "\n\n" +
