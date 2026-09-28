@@ -30,6 +30,10 @@ history reads top to bottom.
 
 ## Next
 
+-3. **Tape recorder (2026-09-28).** `tools/das_tape_profile.py SYM` records Level 2, time-and-sales and Level 1
+   in watch mode and rewrites a day profile (volume by price, POC/value area, 15-minute bars with aggression,
+   book imbalance, largest prints, venues) every five minutes; first used on KOD and MTEK. Next: a
+   post-session summary that scores whether a news gapper held its value area.
 -2. **Catalyst attribution (2026-09-27, `docs/forward-tests/catalysts-2023-2026.md`).** EDGAR 8-K join: the
    34-SMA play loses on earnings/8-K mornings (exclude them: +114R, +69R after slippage); FL earns 4× per
    trade on them and they carry the friction-adjusted edge. Next: an EDGAR check in the morning scan.

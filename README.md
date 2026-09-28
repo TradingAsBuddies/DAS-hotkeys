@@ -86,3 +86,5 @@ export POLYGON_API_KEY=...
 Research and tooling, not advice. Nothing here is a recommendation to trade. These scripts place
 real orders — test every one on a SIM account before pointing it at live money, and read the
 warning headers, which are there because the failure modes are specific and expensive.
+
+- `tools/das_tape_profile.py SYM` — read-only Level 2 / time-and-sales recorder with a rolling day profile (`docs/forward-tests/tape/`).
