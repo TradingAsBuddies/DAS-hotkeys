@@ -166,7 +166,9 @@ class Profile:
     # ---- report -------------------------------------------------------------
     def report(self) -> str:
         q = self.quote
-        tr = [t for t in self.trades if t[0] >= "09:30:00"] or self.trades
+        rth = [t for t in self.trades if t[0] >= "09:30:00"]
+        tr = rth or self.trades
+        scope = "regular session" if rth else "premarket (regular session not open yet)"
         vol = sum(s for _, _, s, _, _ in tr)
         lines = [f"# {self.sym} tape profile — {date.today().isoformat()}", "",
                  f"Rewritten {datetime.now():%H:%M:%S} local · exchange time in tables · read-only watch session · "
@@ -175,7 +177,7 @@ class Profile:
                   f"| Last | VWAP (DAS) | Bid × Ask | HOD | LOD | Day volume (DAS) | Prints seen | Prev close |",
                   "|---:|---:|---|---:|---:|---:|---:|---:|",
                   f"| {q.get('L','')} | {q.get('VWAP','')} | {q.get('B','')} × {q.get('A','')} | {self.hod or ''} @ {self.hod_t} | "
-                  f"{self.lod or ''} @ {self.lod_t} | {q.get('V','')} | {len(self.trades):,} ({vol:,} sh since 09:30) | {q.get('ycl','')} |", ""]
+                  f"{self.lod or ''} @ {self.lod_t} | {q.get('V','')} | {len(self.trades):,} ({vol:,} sh in the {scope}) | {q.get('ycl','')} |", ""]
         if not tr:
             return "\n".join(lines + ["No prints yet."])
         # volume by price
@@ -199,7 +201,7 @@ class Profile:
             else:
                 i -= 1; acc += dn
         val, vah = order[i], order[j]
-        lines += ["## Volume by price (since 09:30, prints seen by this session)", "",
+        lines += [f"## Volume by price ({scope}, prints seen by this watch)", "",
                   f"POC **{poc:.2f}** · value area **{val:.2f} – {vah:.2f}** (70%) · bin {step:.2f}", "",
                   "| Price | Volume | Share | |", "|---:|---:|---:|---|"]
         mx = max(bins.values())
@@ -230,8 +232,8 @@ class Profile:
             for t, bs, as_, sp in self.book_samples:
                 h, m = hm(t)
                 win[f"{h:02d}:{(m // 5) * 5:02d}"].append((bs, as_, sp))
-            lines += ["", "## Book imbalance, top five levels each side (10-second samples, 5-minute means)", "",
-                      "| Window | Bid size | Ask size | Bid/Ask | Spread |", "|---|---:|---:|---:|---:|"]
+            lines += ["", "## Book imbalance, top five price levels each side, sizes in round lots (10-second samples, 5-minute means)", "",
+                      "| Window | Bid lots | Ask lots | Bid/Ask | Spread |", "|---|---:|---:|---:|---:|"]
             for k in sorted(win):
                 v = win[k]
                 bs = sum(x[0] for x in v) / len(v); as_ = sum(x[1] for x in v) / len(v); sp = sum(x[2] for x in v) / len(v)
@@ -251,7 +253,7 @@ class Profile:
                 book_mm[mm] += s
         lines += ["", "## Participation", "", "Tape volume by venue: " + ", ".join(
             f"{k} {v:,}" for k, v in sorted(tape_mm.items(), key=lambda x: -x[1])[:8]),
-                  "", "Book size on display now by MMID: " + (", ".join(
+                  "", "Book lots on display now by MMID: " + (", ".join(
                       f"{k} {v:,}" for k, v in sorted(book_mm.items(), key=lambda x: -x[1])[:10]) or "none")]
         if self.alerts:
             lines += ["", "## Alerts (latest 40)", ""] + [f"- {a}" for a in self.alerts[-40:]]
@@ -269,9 +271,22 @@ def run(sym: str, report_every: int, big_print: int, until: str) -> int:
     TAPE_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     today = date.today().isoformat()
-    tape = (TAPE_DIR / f"{sym}_{today}_tape.jsonl").open("a")
     out = OUT_DIR / f"{sym}-{today}-profile.md"
     prof = Profile(sym, big_print)
+    tape_path = TAPE_DIR / f"{sym}_{today}_tape.jsonl"
+    if tape_path.exists():                      # replay: a restart (ours or DAS's) loses nothing
+        n = 0
+        with tape_path.open() as fh:
+            for row in fh:
+                try:
+                    rec = json.loads(row)
+                except ValueError:
+                    continue
+                prof.on_line(rec["l"], rec["t"])
+                n += 1
+        prof.alerts.clear()
+        print(f"ALERT replayed {n:,} tape lines; prints={len(prof.trades):,}", flush=True)
+    tape = tape_path.open("a")
     until_hm = hm(until)
     backoff = 2
     last_report = 0.0
