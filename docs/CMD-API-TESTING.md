@@ -84,8 +84,9 @@ because the `Error` line is only written to the log at the moment the dialog clo
 
 ## Test loop for a script
 
-1. **Static lint.** `das_script_test.py check scripts/NN.das` flags single quotes and
-   `&&`/`||`, the two things DAS rejects outright.
+1. **Static lint.** `das_script_test.py check scripts/NN.das` flags single quotes in code,
+   which DAS rejects outright, and `&&` mixed with `||` without parentheses, which DAS
+   accepts and evaluates left to right at one precedence (2026-10-15).
 2. **Preconditions.** `exists montage1 hidden_chart1` before anything else. The oracle is
    free and it is the failure mode that looks like everything else.
 3. **Inject.** `run <window> '<script>'` for a snippet, or `check --live` to execute a whole

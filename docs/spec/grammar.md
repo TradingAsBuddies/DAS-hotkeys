@@ -426,5 +426,5 @@ junk symbol `$` may have caused it; that is unconfirmed.
   Indentation follows the brace structure of §3.
 - **A stdlib checker in `tools/`.** Because DAS executes before it rejects (see *The
   execution model*), a pre-flight parser for §3 is a safety tool, not a convenience. It
-  would replace the regex lint in `das_script_test.py check`, which currently flags `&&`
-  and `||` as errors. It is also the parser that `.htk` generation (roadmap item 4) needs.
+  would replace the regex lint in `das_script_test.py check`, which today catches only
+  single quotes and unparenthesised `&&`/`||` mixes. It is also the parser that `.htk` generation (roadmap item 4) needs.

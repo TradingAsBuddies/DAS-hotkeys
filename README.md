@@ -50,7 +50,10 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
   `if (isObject(data) == 0) { data = NewUserObj(); }`
 - **`while` caps at 200 iterations** and **`Send()` at one order per second.**
 - **No user-defined functions.** Unbound named hotkeys called via `ExecHotkey()` are the substitute.
-- **No `&&` or `||`.** Compound conditions are nested `if`.
+- **`&&` and `||` share one precedence.** Undocumented, but they work: `a || b && c` means
+  `(a || b) && c`. Parenthesise every mixed condition. (Verified on 5.8.4.4, 2026-10-15.)
+- **DAS executes before it rejects.** Statements before a syntax error have already run.
+  Lint first: `tools/das_script_test.py check`.
 - **No single quotes.** DAS rejects them outright.
 - **`GetQuoteObj()` returns zeros** unless that symbol is open in a montage.
 - **Study colors cannot be set from script.** Hot buttons, trendlines, and drawn lines can.

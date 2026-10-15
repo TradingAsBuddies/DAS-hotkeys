@@ -226,7 +226,7 @@ The ATR variant needs an ATR study named in Study Config and read via `GetStudyV
 | `while` caps at **200 iterations** | 20-bar volume average is fine; a 500-bar lookback is not |
 | **One `Send()` per second** | why nothing here sends orders |
 | No user-defined functions | shared logic goes in unbound named hotkeys, called with `ExecHotkey()` |
-| No `&&` / `\|\|` documented | every compound condition is written as nested `if` |
+| `&&` / `\|\|` undocumented, share one precedence (verified 2026-10-15) | compound conditions are nested `if`s here; new code may use `&&` / `\|\|` with full parentheses |
 | `GetStudyVal()` returns last value only | previous values persist in globals across updates |
 | `GetQuoteObj()` returns zeros unless the symbol is open in a montage | not used here for that reason |
 

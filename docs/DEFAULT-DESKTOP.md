@@ -92,8 +92,8 @@ whichever is missing. It never creates them.
 - Unique names. "We cannot use the same name for different windows." — *adv guide p.13*
 - Geometry is literal in `10`. Whether `WPos` expands `$variables` is still undocumented and
   untested; every manual example uses literals.
-- Repo-wide rules (no single quotes, no `&&`/`||`, `SetPopOut Y` before `WPos`) are in
-  `WISDOM.md` and `CLAUDE.md`.
+- Repo-wide rules (no single quotes, parenthesised `&&`/`||`, `SetPopOut Y` before `WPos`)
+  are in `docs/CONSTITUTION.md` §10 and `docs/spec/grammar.md`.
 
 ## Open naming split — decide before building on this
 

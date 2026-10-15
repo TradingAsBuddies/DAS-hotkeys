@@ -154,12 +154,17 @@ if (data.coil == 1) {
 // ---- 2. Chart color swap, on transition only --------------------------------
 // Only fires on an edge. Reloading a .cst every second would fight the chart's
 // own redraw and is not something to do 23,400 times a session.
+// Commands take their arguments literally: `LoadSetting $FL_CST_ON` would ask
+// for a file named "$FL_CST_ON" (VERIFIED 2026-10-15, 5.8.4.4: `SYMBOL $x` loaded
+// the symbol "$"). Build the line and Exec it instead; Exec of a built command
+// line in a chart window was verified the same day (SYMBOL via Exec on
+// hidden_chart1). LoadSetting itself through Exec is still unverified.
 if ($FL_USE_CST == 1) {
   if (data.coil == 1) {
-    if (data.coilPrev == 0) { LoadSetting $FL_CST_ON; }
+    if (data.coilPrev == 0) { Exec("LoadSetting " + $FL_CST_ON + ";"); }
   }
   if (data.coil == 0) {
-    if (data.coilPrev == 1) { LoadSetting $FL_CST_OFF; }
+    if (data.coilPrev == 1) { Exec("LoadSetting " + $FL_CST_OFF + ";"); }
   }
 }
 

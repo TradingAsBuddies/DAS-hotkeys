@@ -8,7 +8,7 @@ in it is not part of the project.
 | Piece | Role | Notes |
 |---|---|---|
 | **DAS Trader Pro 5.8.x** (Cobra Trading build) on Windows | Executes every order, draws every chart, owns the session | Install dir `C:\Cobra Trading_x64`. Binds loopback only. |
-| **DAS advanced hotkey script** | The language every `scripts/*.das` file is written in | Off by default: Setup → Other Configuration → Hotkey Advanced Script. No functions, no `&&`/`\|\|`, no single quotes, 200-iteration loops, one `Send()` per second. |
+| **DAS advanced hotkey script** | The language every `scripts/*.das` file is written in | Off by default: Setup → Other Configuration → Hotkey Advanced Script. No functions, no single quotes, `&&`/`\|\|` at one shared precedence, 200-iteration loops, one `Send()` per second. Grammar: `docs/spec/grammar.md`. |
 | **CMD API** (TCP, plain text, `CMDAPI:PORT` in `Config.cfg`) | Bars, quotes, positions, orders, and the `SCRIPT` command that runs hotkey text in a named window | Spec is certification-gated; David holds a copy privately. Watch-mode login for everything that is not an order test. |
 | **DAS log file** `LOG\YYMMDDLog.txt` | The read channel: every API command, every `MsgLog`, every script error | The socket never returns script output. |
 | **Paper account TR4425** | The only account automation may touch | Live account is never scripted. |

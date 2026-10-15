@@ -356,6 +356,38 @@ ORDER_TOKENS = re.compile(r"(\bBUY\b|\bSELL\b|\bSS\b|\bCXL\b|\bPanic\b|\bSend\s*
                           r"\bSwitchDesktop\b|\bClearDesktop\b)", re.I)
 
 
+def mixed_logic(lines: list[str]) -> list[int]:
+    """Line numbers where && and || meet inside one bracket level unparenthesised.
+    DAS gives them ONE precedence, left to right, so `a || b && c` is
+    `(a || b) && c` (verified 2026-10-15, 5.8.4.4; docs/spec/grammar.md 3.9)."""
+    hits: list[int] = []
+    stack: list[set[str]] = [set()]
+    for i, line in enumerate(lines, 1):
+        code, k, in_str = line.split("//", 1)[0], 0, False
+        while k < len(code):
+            ch = code[k]
+            if in_str:
+                if ch == "\\":
+                    k += 1
+                elif ch == '"':
+                    in_str = False
+            elif ch == '"':
+                in_str = True
+            elif ch == "(":
+                stack.append(set())
+            elif ch == ")" and len(stack) > 1:
+                stack.pop()
+            elif ch in ";{}":
+                stack = [set()]
+            elif code[k:k + 2] in ("&&", "||"):
+                stack[-1].add(code[k:k + 2])
+                if len(stack[-1]) == 2 and (not hits or hits[-1] != i):
+                    hits.append(i)
+                k += 1
+            k += 1
+    return hits
+
+
 def cmd_check(das: DAS | None, a) -> int:
     """Static lint (repo rules). With --live, EXECUTE the whole file inside DAS
     and report Log/Error lines. Live mode refuses any file whose code contains
@@ -371,13 +403,13 @@ def cmd_check(das: DAS | None, a) -> int:
             problems.append(f"{i}: single quote in code")
         elif "'" in line:
             warnings.append(f"{i}: single quote in a comment (00 ran live with these; keep them out anyway)")
-        if "&&" in code or "||" in code:
-            problems.append(f"{i}: && or || (nest ifs)")
         m = ORDER_TOKENS.search(code)
         if m:
             forbidden.append(f"{i}: {m.group(0)}")
         if code.strip():
             code_lines.append(code.strip())
+    for i in mixed_logic(src.splitlines()):
+        problems.append(f"{i}: && and || mixed without parentheses (they share one precedence)")
     print(f"static: {len(problems)} problem(s), {len(warnings)} warning(s)")
     for p in problems:
         print("   PROBLEM", p)
