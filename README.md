@@ -13,6 +13,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | Path | |
 |---|---|
 | `scripts/` | Thirteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry |
+| `docs/spec/grammar.md` | The language grammar (draft): EBNF with every rule tagged documented, verified or inferred |
 | `docs/WISDOM.md` | What the 20 official DAS manuals actually say about scripting, with page citations |
 | `docs/DEFAULT-DESKTOP.md` | The base layer: `montage1` and `hidden_chart1`, named from script |
 | `docs/CMD-API-TESTING.md` | Driving and observing hotkey scripts from Python over the CMD API |

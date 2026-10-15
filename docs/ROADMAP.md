@@ -73,6 +73,22 @@ history reads top to bottom.
 8. **Reconcile the two FL definitions**: 9-EMA × 34-SMA (this repo) versus 9-EMA × VWAP
    (`fl_monitor_spec.md`). One definition, one backtest, one driver.
 
+## DSL documentation (`INTENT.md`, 2026-10)
+
+The language itself as the product: a reference in the spirit of the JLS, a cookbook, a
+tutorial for traders, and an Emacs `dastrader-mode`. Each step is shippable alone.
+
+| Step | State |
+|---|---|
+| Grammar draft with evidence labels, manual-vs-build table and open questions (`docs/spec/grammar.md`) | done 2026-10-15 |
+| Settle open questions Q1–Q12 on TR4425 through the harness; relabel each `[V date]` | next |
+| Standard-library recursive-descent checker in `tools/`, replacing the regex lint in `das_script_test.py check` | next |
+| Reference chapters: built-ins and commands, object model, execution contexts, limits | — |
+| `dastrader-mode`: font-lock and indentation from the grammar, `.das`/`.htk` activation | — |
+| Cookbook: one recipe per pattern already proven in `scripts/` | — |
+| Tutorial for domain experts | — |
+| `.htk` generation from `scripts/*.das` (item 4 above) on top of the checker | — |
+
 ## Later
 
 - Paper-account order round trip in the harness (`NEWORDER` + `CANCEL` on a normal login)
