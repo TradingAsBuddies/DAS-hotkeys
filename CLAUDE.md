@@ -4,10 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-No source code yet. There is no build system, no test suite, no package manifest, and this is
-not a git repository. Any build/lint/test commands must be added here once the first code
-lands — do not assume they exist. What exists today is `INTENT.md` and the reference corpus in
-`docs/manuals/`.
+A git repository (public; see `docs/CONSTITUTION.md` §4). There is no build system, no test
+suite and no package manifest; repo tools are standard-library Python (`docs/TECH-STACK.md`).
+What exists: hotkey scripts in `scripts/*.das`, the CMD API harness and forward-test driver in
+`tools/`, backtests in `backtest/`, and docs in `docs/` — start with `README.md` and
+`docs/ROADMAP.md`. The language grammar is `docs/spec/grammar.md`.
+
+`INTENT.md` (2026-10) widens the goal to a DSL documentation project: language reference,
+cookbook, tutorial, and an Emacs `dastrader-mode`. The grammar is the foundation for all four.
 
 ## Intent
 
