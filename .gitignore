@@ -23,3 +23,11 @@ __pycache__/
 
 # 8 MB of 1-minute trade rows; regenerate with backtest_fl_week.py
 backtest/results/fl-3y-1m-base.json
+
+# ── Vendor sample code — copyright DAS|Inc ──────────────────────────────────
+# DAS's CMD API Python sample, released with the certification-gated spec.
+# Kept locally for reference; never published (CONSTITUTION §16).
+docs/CMDAPI_PYTHON.zip
+
+# Windows download markers (Mark of the Web) copied across from NTFS
+*:Zone.Identifier
