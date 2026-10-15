@@ -32,9 +32,12 @@ its own reason.
 
 ## 3. Code
 
-10. Scripts obey DAS: no single quotes, no `&&` / `\|\|`, no user functions, nested `if`,
-    `SetPopOut Y` before `WPos` / `WSize`, `Wait()` after `NewWindow`, one `Send()` per
-    second, `MsgLog` not `MsgBox` in anything that may be injected.
+10. Scripts obey DAS: no single quotes, no user functions, lower-case keywords, `;` after
+    every statement in a block, `SetPopOut Y` before `WPos` / `WSize`, `Wait()` after
+    `NewWindow`, one `Send()` per second, `MsgLog` not `MsgBox` in anything that may be
+    injected. `&&` and `\|\|` are allowed, but a condition that mixes them is fully
+    parenthesised: DAS gives them one precedence, left to right (`docs/spec/grammar.md`
+    §3.9). Command arguments are literal; a computed argument goes through `Exec`.
 11. Windows are addressed by name. `GetWindowObj()` without an argument is not trusted.
 12. Per-chart state lives on the chart's `data` object; globals hold operator settings only.
 13. Tools read the host and port from the environment and cross-check the port against
