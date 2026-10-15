@@ -120,6 +120,15 @@ itself is in before any order test.
 
 ## Other things found along the way
 
+- **Two installs (2026-10-15).** Since 2026-10-07 the running DAS is the 5.8.4.4 Beta in
+  `C:\Cobra Trading_x64-Beta`, with its own `Config.cfg` and `LOG\`. The harness defaults
+  to `C:\Cobra Trading_x64` (5.8.2.5), finds no log for today there, and reports "no answer"
+  for every window. Set `DAS_DIR="/mnt/c/Cobra Trading_x64-Beta"`. `tasklist /v` or
+  `(Get-Process DasTrader64).Path` shows which one is running.
+- **`$x = ;` is accepted silently on 5.8.4.4** (the parse-error table above is from 5.8.2.5),
+  and statements before a real syntax error execute before the dialog appears. See
+  `docs/spec/grammar.md`.
+
 - `Config.cfg` line `CMDAPI:PORT:3192` is the authoritative port. The harness warns if
   `~/.claude/.env` disagrees.
 - `*.htk` hotkey files are plain text: `Key:Name:~ <len>:<script with ~0D~0A escapes>`.

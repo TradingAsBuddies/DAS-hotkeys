@@ -81,7 +81,8 @@ tutorial for traders, and an Emacs `dastrader-mode`. Each step is shippable alon
 | Step | State |
 |---|---|
 | Grammar draft with evidence labels, manual-vs-build table and open questions (`docs/spec/grammar.md`) | done 2026-10-15 |
-| Settle open questions Q1–Q12 on TR4425 through the harness; relabel each `[V date]` | next |
+| Open questions Q1–Q12 settled live on 5.8.4.4 Beta, plus 13 follow-up probes: `&&`/`\|\|` work at one shared precedence level, lower-case keywords only, block-final `;` required, no `$var` expansion in command args, DAS executes before it rejects | done 2026-10-15 |
+| Decide the `&&`/`\|\|` rule (CONSTITUTION §10, README, `check` lint) and the `LoadSetting $FL_CST_ON` defect in `02` | next |
 | Standard-library recursive-descent checker in `tools/`, replacing the regex lint in `das_script_test.py check` | next |
 | Reference chapters: built-ins and commands, object model, execution contexts, limits | — |
 | `dastrader-mode`: font-lock and indentation from the grammar, `.das`/`.htk` activation | — |
