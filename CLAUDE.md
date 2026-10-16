@@ -108,11 +108,13 @@ Beyond `WISDOM.md` and the README's "Things that cost time to learn" list:
 - **Position guard is mandatory.** Earlier buy/short scripts could open a naked opposite
   position; guard on the magnitude of `POS` before sending.
 - **Argument order in SLP orders never flips between long and short — only the signs do.**
-- **Stops anchor to the ASK at signal time, not the fill.** Open limitation (commit
-  `cb5d243`): a fill at the entry limit instead of the ASK turns 0.11 intended risk into
-  0.26, so `$entrySlip` is real slippage exposure. The fix is to anchor on fill price; its
-  property name is still unknown (`ShowObject()` on the order/position object to find it).
-  This note was dropped from the script headers in later commits, so it lives here now.
+- **Stops used to anchor to the quote at signal time, not the fill** (commit `cb5d243`): a
+  fill at the entry limit turned 0.11 intended risk into 0.26. **07 and 08 now anchor on
+  the position average cost** via `FocusWindow montage1; Price=AvgCost; $fill = $m.Price;`
+  (classic command, hotkeys guide p.5), falling back to the quote anchor with a `FALLBACK`
+  log line if the value is not a plausible fill. **Not yet verified on SIM.** `$m.AvgCost`
+  appears only in the plugin reference, not the official property list; do not use it
+  unverified. `06`, `20`, `21` still anchor to the quote.
 
 ## Existing DAS tooling lives outside this repo
 
