@@ -12,7 +12,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 
 | Path | |
 |---|---|
-| `scripts/` | Thirteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry |
+| `scripts/` | Eighteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry, montage buttons |
 | `docs/WISDOM.md` | What the 20 official DAS manuals actually say about scripting, with page citations |
 | `docs/DEFAULT-DESKTOP.md` | The base layer: `montage1` and `hidden_chart1`, named from script |
 | `docs/CMD-API-TESTING.md` | Driving and observing hotkey scripts from Python over the CMD API |
@@ -38,6 +38,10 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `10-ensure-default-desktop.das` | three hotkeys — A creates/names `montage1` and `hidden_chart1` if missing, B verifies, C un-hides. See `docs/DEFAULT-DESKTOP.md` |
 | `20-fl-long.das` / `21-fl-short.das` | FL entry with a 1.5×ATR stop-limit, driven by `$FL_SYM` / `$FL_QTY` / `$FL_ATR`; injected by the driver or bound to a hotkey |
 | `22-fl-flatten.das` | per-symbol close at any hour; `Panic` refuses outside market hours |
+| `30-load-shares.das` | montage buttons — LOAD 10/20/30/40/50/100, sets the share box |
+| `31-buy-ask-slp.das` / `32-buy-bid-slp.das` | montage buttons — Buy ASK/BID 10 and 50, each with an 11c SLP stop from the fill; unfilled BID remainder is cancelled |
+| `33-risk-buy-bid.das` | montage buttons — R$7 / R$15 BID buys and R$10 LOAD, sized to 1.5×ATR |
+| `34-cover-pct.das` | montage buttons — cover 100/50/25% of a short at ASK or BID; refuses unless short |
 
 ## Things that cost time to learn
 

@@ -12,6 +12,7 @@ Git repo on `main`. `README.md` is the public-facing overview; this file is the 
 | `scripts/06`–`08` | Hand-pressed order entry with SLP stop-limit: 06 = ATR-sized long/short, 07 = buy fixed 11c, 08 = short fixed 11c (mirror of 07) |
 | `scripts/10` | Ensures the default desktop has `montage1` and `hidden_chart1`, the two CMD API targets (`docs/DEFAULT-DESKTOP.md`) |
 | `scripts/20`–`22` | Driven, not pressed: FL long, short, flatten. Injected into `montage1` by `tools/fl_forward_test.py` after it sets the `$FL_*` globals |
+| `scripts/30`–`34` | Montage buttons at one tenth of a reference montage: LOAD sizes, Buy ASK/BID + 11c fill-anchored SLP, R$ risk-sized BID buys (1.5×ATR), short covers by %. Flat-only entries; unfilled remainder cancelled |
 | `tools/` | Python over the CMD API: `das_script_test.py` (inject/eval/lint harness), `fl_forward_test.py` (forward-test driver), `das_tape_profile.py` (read-only L2 + T&S recorder) |
 | `backtest/` | `fetch_bars.py` (Polygon REST), `fetch_flatfiles.sh` (Massive flat files), `backtest_fl.py`, `backtest_fl_week.py`, `backtest_sma34_trend.py`, `catalysts/` (SEC EDGAR); output in `results/` |
 | `docs/` | `CONSTITUTION.md` (rules that never change, read first), `WISDOM.md`, `CMD-API-TESTING.md`, `ROADMAP.md`, `TECH-STACK.md`, `forward-tests/`, `playbook/`, `manuals/MANIFEST.md` |
