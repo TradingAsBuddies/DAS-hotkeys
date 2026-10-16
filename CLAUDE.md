@@ -109,12 +109,12 @@ Beyond `WISDOM.md` and the README's "Things that cost time to learn" list:
   position; guard on the magnitude of `POS` before sending.
 - **Argument order in SLP orders never flips between long and short — only the signs do.**
 - **Stops used to anchor to the quote at signal time, not the fill** (commit `cb5d243`): a
-  fill at the entry limit turned 0.11 intended risk into 0.26. **07 and 08 now anchor on
-  the position average cost** via `FocusWindow montage1; Price=AvgCost; $fill = $m.Price;`
+  fill at the entry limit turned 0.11 intended risk into 0.26. **06, 07, 08, 20 and 21 now
+  anchor on the position average cost** via `FocusWindow montage1; Price=AvgCost; $fill = $m.Price;`
   (classic command, hotkeys guide p.5), falling back to the quote anchor with a `FALLBACK`
   log line if the value is not a plausible fill. **Not yet verified on SIM.** `$m.AvgCost`
   appears only in the plugin reference, not the official property list; do not use it
-  unverified. `06`, `20`, `21` still anchor to the quote.
+  unverified. In 20/21 the `FL DONE` log line now reports `fill` instead of `entry~`.
 
 ## Existing DAS tooling lives outside this repo
 

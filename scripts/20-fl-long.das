@@ -12,6 +12,8 @@
 // Can also be bound to a hotkey after setting the three globals by hand.
 // No MsgBox anywhere: a modal freezes the CMD API (docs/CMD-API-TESTING.md).
 // Pattern and Round() workarounds copied from 06/07, which executed on SIM.
+// The stop anchors to the position average cost, not the ASK at signal time
+// (same mechanism as 07). NOT YET VERIFIED ON SIM.
 // ============================================================================
 
 $stopMult  = 1.5;    // stop distance in ATRs
@@ -36,8 +38,6 @@ if ($stopDist < 0.02) { MsgLog("FL LONG refused: stop too tight ", $stopDist); r
 
 $negSlip = 0 - $entrySlip;
 $entry   = Round($px - $negSlip, 2);          // ASK + slip, via subtraction (see 04 F1)
-$trigger = Round($px - $stopDist, 2);
-$limit   = Round($trigger - $limitSlip, 2);
 
 $oe = "B " + $FL_QTY;
 $oe = $oe + " " + $FL_SYM;
@@ -53,6 +53,27 @@ if ($pos < 1) {
   return;
 }
 
+// ---- anchor: stop from the FILL, not the ASK -------------
+// Same mechanism as 07: Price=AvgCost (hotkeys guide p.5)
+// writes the position average cost into the montage Price
+// box. A long cannot fill above its limit, so <= 0 or above
+// $entry is not a fill: fall back to the ASK anchor.
+FocusWindow montage1;
+Price=AvgCost;
+$fill = $m.Price;
+
+$anchor = $fill;
+$fb = 0;
+if ($fill <= 0)     { $fb = 1; }
+if ($fill > $entry) { $fb = 1; }
+if ($fb == 1) {
+  $anchor = $px;
+  MsgLog("FL LONG ", $FL_SYM, " FALLBACK ASK, fill=", $fill);
+}
+
+$trigger = Round($anchor - $stopDist, 2);
+$limit   = Round($trigger - $limitSlip, 2);
+
 $os = "S " + $pos;
 $os = $os + " " + $FL_SYM;
 $os = $os + " SLP " + $trigger;
@@ -60,4 +81,4 @@ $os = $os + " " + $limit;
 $os = $os + " D+";
 MsgLog("FL STOP [", $os, "]");
 NewOrderObj($os).Send();
-MsgLog("FL DONE LONG ", $FL_SYM, " ", $pos, " entry~", $entry, " stop ", $trigger);
+MsgLog("FL DONE LONG ", $FL_SYM, " ", $pos, " fill ", $fill, " stop ", $trigger);
