@@ -42,6 +42,8 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `31-buy-ask-slp.das` / `32-buy-bid-slp.das` | montage buttons — Buy ASK/BID 10 and 50, each with an 11c SLP stop from the fill; unfilled BID remainder is cancelled |
 | `33-risk-buy-bid.das` | montage buttons — R$7 / R$15 BID buys and R$10 LOAD, sized to 1.5×ATR |
 | `34-cover-pct.das` | montage buttons — cover 100/50/25% of a short at ASK or BID; refuses unless short |
+| `35-buy-ask-range.das` | hotkey — buy at ASK+8c on REB25L, then a range exit from the fill: market stop −0.50, limit target +1.50; flat only, regular hours |
+| `36-short-bid-range.das` | hotkey — short at BID−8c on REB25L, then a range cover from the fill: market stop +0.50, limit target −1.50; mirror of `35` |
 
 ## Things that cost time to learn
 

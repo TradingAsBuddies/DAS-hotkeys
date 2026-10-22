@@ -13,6 +13,7 @@ Git repo on `main`. `README.md` is the public-facing overview; this file is the 
 | `scripts/10` | Ensures the default desktop has `montage1` and `hidden_chart1`, the two CMD API targets (`docs/DEFAULT-DESKTOP.md`) |
 | `scripts/20`–`22` | Driven, not pressed: FL long, short, flatten. Injected into `montage1` by `tools/fl_forward_test.py` after it sets the `$FL_*` globals |
 | `scripts/30`–`34` | Montage buttons at one tenth of a reference montage: LOAD sizes, Buy ASK/BID + 11c fill-anchored SLP, R$ risk-sized BID buys (1.5×ATR), short covers by %. Flat-only entries; unfilled remainder cancelled |
+| `scripts/35`–`36` | Advanced rewrite of a classic REB25L entry + `STOPTYPE:RANGE` trigger: 35 = buy ASK+8c, `RGM` exit at fill −0.50 / +1.50; 36 = short BID−8c, mirror. Range price order unverified (guide text and examples disagree) |
 | `tools/` | Python over the CMD API: `das_script_test.py` (inject/eval/lint harness), `fl_forward_test.py` (forward-test driver), `das_tape_profile.py` (read-only L2 + T&S recorder) |
 | `backtest/` | `fetch_bars.py` (Polygon REST), `fetch_flatfiles.sh` (Massive flat files), `backtest_fl.py`, `backtest_fl_week.py`, `backtest_sma34_trend.py`, `catalysts/` (SEC EDGAR); output in `results/` |
 | `docs/` | `CONSTITUTION.md` (rules that never change, read first), `WISDOM.md`, `CMD-API-TESTING.md`, `ROADMAP.md`, `TECH-STACK.md`, `forward-tests/`, `playbook/`, `manuals/MANIFEST.md` |
