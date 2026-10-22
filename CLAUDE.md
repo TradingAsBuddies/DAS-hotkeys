@@ -9,7 +9,7 @@ Git repo on `main`. `README.md` is the public-facing overview; this file is the 
 | Path | What it is |
 |---|---|
 | `scripts/00`–`05` | Fashionably Late (FL) desktop: load script, layout builder, chart coil detector, 9-EMA × 34-SMA trigger, operator hotkeys, `.cst` repaint test |
-| `scripts/06`–`08` | Hand-pressed order entry with SLP stop-limit: 06 = ATR-sized long/short, 07 = buy fixed 11c, 08 = short fixed 11c (mirror of 07) |
+| `scripts/06`–`08` | Hand-pressed order entry with SLP stop-limit: 06 = ATR-sized long/short, 07 = buy fixed 41c, 08 = short fixed 11c (mirror of 07, but 11c) |
 | `scripts/10` | Ensures the default desktop has `montage1` and `hidden_chart1`, the two CMD API targets (`docs/DEFAULT-DESKTOP.md`) |
 | `scripts/20`–`22` | Driven, not pressed: FL long, short, flatten. Injected into `montage1` by `tools/fl_forward_test.py` after it sets the `$FL_*` globals |
 | `scripts/30`–`34` | Montage buttons at one tenth of a reference montage: LOAD sizes, Buy ASK/BID + 11c fill-anchored SLP, R$ risk-sized BID buys (1.5×ATR), short covers by %. Flat-only entries; unfilled remainder cancelled |

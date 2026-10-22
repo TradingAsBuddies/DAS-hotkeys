@@ -1,5 +1,5 @@
 // ==========================================================
-// 07-buy-fixed-slp.das   BUY, 11c SLP stop
+// 07-buy-fixed-slp.das   BUY, 41c SLP stop
 // One hotkey. Montage window must be named  montage1
 // ==========================================================
 //
@@ -25,8 +25,8 @@
 // ==========================================================
 
 // ---- inputs ----------------------------------------------
-$stopDist    = 0.11;
-$limitSlip   = 0.05;
+$stopDist    = 0.41;
+$limitSlip   = 0.15;
 $entrySlip   = 0.15;
 $riskDollars = 0;
 
