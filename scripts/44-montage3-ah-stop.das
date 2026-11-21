@@ -52,6 +52,17 @@ if ($acct == "") { MsgLog("AHSTOP refused: no account"); MsgBox("no account on m
 if ($pos < 1)    { MsgLog("AHSTOP refused: ", $sym, " POS ", $pos); MsgBox("no position - " + $sym); return; }
 if ($M3_SYM != $sym) { MsgLog("AHSTOP REFUSED ", $sym, ": side and stop not recorded"); MsgBox("no recorded entry - " + $sym); return; }
 
+// The recorded side belongs to ONE position. If that one was closed (a stop
+// hit, a hand close) and another opened some other way, the average cost
+// differs from the one script 41 recorded, and acting on the old side
+// could double the position instead of closing it. Refuse.
+$d = $m.AvgCost - $M3_ENTRY;
+if ($M3_ENTRY == 0) { $d = 1; }
+$same = 1;
+if ($d > 0.01) { $same = 0; }
+if ($d < -0.01) { $same = 0; }
+if ($same == 0) { MsgLog("AHSTOP REFUSED ", $sym, ": average cost ", $m.AvgCost, " is not the recorded entry ", $M3_ENTRY); MsgBox("not the recorded position - " + $sym); return; }
+
 $stop = $M3_STOP;
 $dir = 0;
 if ($M3_SIDE == "L") { $dir = 1; }
@@ -72,6 +83,12 @@ $os = $os + " SLP " + $stop;
 $os = $os + " " + $limit;
 $os = $os + " D+";
 
+// A stop order placed at a price the market is already through triggers at
+// once and can leave its limit resting unfilled (seen 2026-11-21 in replay).
+$thru = 0;
+if ($dir == 1) { if ($m.BID <= $stop) { $thru = 1; } }
+if ($dir == 2) { if ($m.ASK >= $stop) { $thru = 1; } }
+if ($thru == 1) { MsgLog("AHSTOP REFUSED ", $sym, ": price is already through the stop ", $stop, ", use FLATTEN"); MsgBox("price is through the stop - FLATTEN " + $sym); return; }
 if ($M3_BUSY == 1) { MsgLog("AHSTOP refused: another m3 button is still running"); MsgBox("busy - wait, or PING to clear"); return; }
 $M3_BUSY = 1;
 

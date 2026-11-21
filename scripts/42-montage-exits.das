@@ -58,6 +58,17 @@ if ($rt == "")  { MsgLog("EXIT flatten refused: no route"); return; }
 if ($pos < 1)   { MsgLog("EXIT flatten ", $sym, ": POS ", $pos, ", nothing to close"); return; }
 if ($M3_SYM != $sym) { MsgLog("EXIT flatten REFUSED ", $sym, ": side not recorded, use Panic"); return; }
 
+// The recorded side belongs to ONE position. If that one was closed (a stop
+// hit, a hand close) and another opened some other way, the average cost
+// differs from the one script 41 recorded, and acting on the old side
+// could double the position instead of closing it. Refuse.
+$d = $m.AvgCost - $M3_ENTRY;
+if ($M3_ENTRY == 0) { $d = 1; }
+$same = 1;
+if ($d > 0.01) { $same = 0; }
+if ($d < -0.01) { $same = 0; }
+if ($same == 0) { MsgLog("EXIT flatten REFUSED ", $sym, ": average cost ", $m.AvgCost, " is not the recorded entry ", $M3_ENTRY, ", use Panic"); return; }
+
 $side = "X";
 if ($M3_SIDE == "S") { $side = "B"; }
 if ($M3_SIDE == "L") { $side = "S"; }

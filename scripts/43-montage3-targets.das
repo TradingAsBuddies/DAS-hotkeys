@@ -57,6 +57,17 @@ if ($pos < 3)    { MsgLog("TARGETS refused: ", $sym, " POS ", $pos, ", need 3 or
 if ($avg == 0)   { MsgLog("TARGETS refused: no average cost"); MsgBox("no average cost"); return; }
 if ($M3_SYM != $sym) { MsgLog("TARGETS REFUSED ", $sym, ": side and stop not recorded"); MsgBox("no recorded entry - " + $sym); return; }
 
+// The recorded side belongs to ONE position. If that one was closed (a stop
+// hit, a hand close) and another opened some other way, the average cost
+// differs from the one script 41 recorded, and acting on the old side
+// could double the position instead of closing it. Refuse.
+$d = $m.AvgCost - $M3_ENTRY;
+if ($M3_ENTRY == 0) { $d = 1; }
+$same = 1;
+if ($d > 0.01) { $same = 0; }
+if ($d < -0.01) { $same = 0; }
+if ($same == 0) { MsgLog("TARGETS REFUSED ", $sym, ": average cost ", $m.AvgCost, " is not the recorded entry ", $M3_ENTRY); MsgBox("not the recorded position - " + $sym); return; }
+
 $stop = $M3_STOP;
 $dir = 0;
 if ($M3_SIDE == "L") { $dir = 1; }
@@ -95,6 +106,12 @@ if ($dir == 2) {
 
 if ($M3_BUSY == 1) { MsgLog("TARGETS refused: another m3 button is still running"); MsgBox("busy - wait, or PING to clear"); return; }
 $M3_BUSY = 1;
+// A stop order placed at a price the market is already through triggers at
+// once and can leave its limit resting unfilled (seen 2026-11-21 in replay).
+$thru = 0;
+if ($dir == 1) { if ($m.BID <= $stop) { $thru = 1; } }
+if ($dir == 2) { if ($m.ASK >= $stop) { $thru = 1; } }
+if ($thru == 1) { $M3_BUSY = 0; MsgLog("TARGETS REFUSED ", $sym, ": price is already through the stop ", $stop, ", use FLATTEN"); MsgBox("price is through the stop - FLATTEN " + $sym); return; }
 MsgLog("TARGETS ", $sym, " POS ", $pos, " cost ", $avg, " stop ", $stop, " R ", $r, ": cancelling, then 3 range orders");
 GetAccountObj($acct).CancelOrder("BUY|SELL", $sym);
 Wait(1100);
