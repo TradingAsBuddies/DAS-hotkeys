@@ -74,6 +74,7 @@ This is the single most important line in the corpus for your montage and chart 
 - Both require **holding the left mouse button down** while the hotkey fires — the script starts an anchor-drag, and a human finishes it. Any mouse click aborts the operation mid-flight.
 - So "montage alignment" splits cleanly in two: **geometry is fully automatable** (`WPos`/`WSize`/`GetRect`), **symbol-linkage is not**. Plan around that boundary rather than fighting it.
 - Windows also carry a `LinkColor` property, and DAS has a color-based linking model documented in the HTML knowledge base — that path may script better than the drag anchor. Worth testing before committing to a design.
+- **Verified 2026-11-19 on 5.8.4.8: `LinkColor` scripts linking.** It reads back (`montage3` = `Red`) and is writable. Two drill windows set to `"Blue"` were linked: a montage `.SYMBOL` change moved the chart to the same symbol. After the chart was set to `"Green"`, the next montage change left it alone. So linking *is* scriptable, by colour; only the drag-anchor `LinkTo` needs the mouse. `tools/das_layout.py` takes `"link": "Blue"`.
 
 *Sources: das-hotkeys-guide.pdf p.11; das-advanced-hotkey-guide.pdf pp.9, 14*
 
@@ -160,6 +161,45 @@ This is the single most important line in the corpus for your montage and chart 
 *Sources: das-advanced-hotkey-guide.pdf pp.7–8, 10, 24–29*
 
 ---
+
+## Hot Buttons Are a Display the CMD API Can Write
+
+Verified 2026-11-18 on `C:\Cobra Trading_x64-NEW`, `montage1`, paper session. Every line is in
+`LOG\261118Log.txt`. No order was involved.
+
+- **A script can't create a button.** You make the button by hand, give it a name, and from then
+  on a script can change its text and colours (hot buttons guide p.6–8). **Update 2026-11-19:**
+  a whole panel is a `.cbf` file (button window menu, Save/Load). `tools/gen_htk.py cbf`
+  generates one, and a generated four-button panel loaded into montage3 with every name found. This is the basis for a
+  dashboard: lay out the buttons once, then let a feeder process update them.
+- **Montage hot buttons work.** `GetCustButObj("m1_b0")` returned an object (P6). `.text` read
+  `Button0` and then read back `hello` after being set. `.BkColor = Color("Red")` and
+  `.FgColor = Color("White")` raised no error (P7). The operator confirmed on screen that the
+  button showed "from API" in white on red (P8, 2026-11-18).
+- **A script write changes the live face, not the saved button.** After P8 the edit dialog showed no
+  new content, while `.text` read back `from API` (P9). The edit dialog holds only the saved Name,
+  Text, Type and click script. Whether the face resets on a DAS restart is untested; a feeder that
+  rewrites every few seconds doesn't depend on it.
+- **A rename in the edit dialog takes effect immediately.** After the operator renamed `m1_b0` to
+  `dash_box`, `GetCustButObj("dash_box")` found the button and `"m1_b0"` returned a non-object,
+  with no DAS restart (P10). The Name is the only handle a script has on a button.
+- **`Color()` accepts `Green`, `Yellow`, `Blue`, `Gray` and `Black`**, as well as `Red` and `White`.
+  Each was set on `dash_box` without a script error (P11). Only red and white have been checked
+  on screen.
+- **Another window's buttons are reachable too.** From `GLOBALSCRIPT`,
+  `GetWindowObj("montage1").GetCustButObj("m1_b0").text = "from API"` read back (P8). So one
+  feeder can update any window's buttons.
+- **A missing name returns a non-object.** It raises no error (P0). Writing `.text` on that
+  non-object raises `ScriptError:100 Missing Object` or `Function return is not Object`, a modal
+  that freezes the API. **Guard every write with `isObject()`.**
+- **Unexplained:**
+  - A by-hand button the operator named `probe` was never found.
+  - Two guarded probes logged nothing and raised no error, although DAS logged them as received:
+    one nested `isObject(GetCustButObj(...))` inside `MsgLog`, the other went through a window
+    object.
+
+  The pattern that works: assign the lookup to a variable, test it with `isObject` in an `if`,
+  and only then read or write.
 
 ## One-Sentence Takeaway
 

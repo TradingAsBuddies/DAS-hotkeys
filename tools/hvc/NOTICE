@@ -1,0 +1,19 @@
+HVC Watcher for DAS Trader
+
+The detection logic in engine.py, and the fixtures in test_engine.py, are a
+Python port of "HVC Watcher" by Major Hayden:
+  https://github.com/major/tradingview/tree/main/hvc_watcher
+  Copyright 2025 Major Hayden
+  Licensed under the Apache License, Version 2.0
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Changes from the original: ported from Pine Script v6 to Python; TradingView
+drawing, labels and alertcondition() replaced by DAS Trader outputs; added an
+optional HVE warm-up (hve_min_bars), off by default in the engine.
+
+chartbook.py renders with TradingView Lightweight Charts(TM) v5.2.1
+  https://github.com/tradingview/lightweight-charts
+  Copyright (c) TradingView, Inc. Licensed under the Apache License, Version 2.0.
+  Loaded from unpkg.com with a pinned version and SRI hash (not vendored).
+  The TradingView attribution logo is left enabled, and the page footer links
+  to https://www.tradingview.com/lightweight-charts/.

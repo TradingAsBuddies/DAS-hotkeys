@@ -1,0 +1,15 @@
+[Unit]
+Description=HVC chart book at 20:15 ET, Mon-Fri
+Documentation=file://%h/Projects/DAS-hotkeys/docs/HVC-WATCHER.md
+
+[Timer]
+# Anchored to America/New_York so US DST is tracked regardless of the box's local zone.
+# 20:15 ET: Massive's daily bar keeps accumulating extended-hours volume until 20:00 ET,
+# so events are only final after then (bars_massive.CONFIRM_AFTER_ET).
+OnCalendar=Mon..Fri *-*-* 20:15:00 America/New_York
+
+# If WSL was down at 20:15, run on next start: the book is still the prep for the next session.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

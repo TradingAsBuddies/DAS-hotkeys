@@ -1,0 +1,102 @@
+{
+  "comment": "montage3 1 x ATR(14) entries, requested 2026-11-19 via the Kestrel session. No-key records run from montage3 buttons with ExecHotkey. Order-bearing: test on paper (plan.md L3/L4) before use.",
+  "hotkeys": [
+    {
+      "name": "m3.long_1atr",
+      "key": "",
+      "source": "scripts/31-montage3-atr-entry.das",
+      "block": "A",
+      "button": {
+        "window": "montage3",
+        "label": "LONG 1ATR",
+        "name": "m3_long",
+        "fg": "white",
+        "bg": "green"
+      }
+    },
+    {
+      "name": "m3.short_1atr",
+      "key": "",
+      "source": "scripts/31-montage3-atr-entry.das",
+      "block": "B",
+      "button": {
+        "window": "montage3",
+        "label": "SHORT 1ATR",
+        "name": "m3_short",
+        "fg": "white",
+        "bg": "red"
+      }
+    },
+    {
+      "name": "m3.ping",
+      "key": "",
+      "source": "scripts/htk/ping.das",
+      "button": {
+        "window": "montage3",
+        "label": "PING",
+        "name": "m3_ping"
+      }
+    },
+    {
+      "name": "m3.cancel",
+      "key": "",
+      "source": "scripts/32-montage-exits.das",
+      "block": "A",
+      "button": {
+        "window": "montage3",
+        "label": "CANCEL",
+        "name": "m3_cancel",
+        "fg": "black",
+        "bg": "yellow"
+      }
+    },
+    {
+      "name": "m3.flatten",
+      "key": "",
+      "source": "scripts/32-montage-exits.das",
+      "block": "B",
+      "button": {
+        "window": "montage3",
+        "label": "FLATTEN",
+        "name": "m3_flatten",
+        "fg": "white",
+        "bg": "blue"
+      }
+    },
+    {
+      "name": "m3.targets",
+      "key": "",
+      "source": "scripts/33-montage3-targets.das",
+      "button": {
+        "window": "montage3",
+        "label": "1R 2R 3R",
+        "name": "m3_targets",
+        "fg": "white",
+        "bg": "black",
+        "row": 1
+      }
+    },
+    {
+      "name": "m3.ahstop",
+      "key": "",
+      "source": "scripts/34-montage3-ah-stop.das",
+      "button": {
+        "window": "montage3",
+        "label": "AH STOP",
+        "name": "m3_ahstop",
+        "fg": "black",
+        "bg": "yellow",
+        "row": 1
+      }
+    }
+  ],
+  "panels": [
+    {
+      "window": "montage3",
+      "name": "dash_box",
+      "text": "GATE",
+      "fg": "black",
+      "bg": "gray"
+    }
+  ]
+}

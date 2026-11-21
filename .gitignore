@@ -31,3 +31,11 @@ docs/CMDAPI_PYTHON.zip
 
 # Windows download markers (Mark of the Web) copied across from NTFS
 *:Zone.Identifier
+
+# ── Private DAS snippets ─────────────────────────────────────────────────────
+# Generated from the private R-CONFIG; they hold account IDs (CONSTITUTION §16).
+scripts/local/
+*.htk
+
+# Chart settings hold an account ID and symbol history (CONSTITUTION 16)
+*.cst

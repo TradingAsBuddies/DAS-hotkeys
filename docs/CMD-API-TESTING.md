@@ -4,7 +4,12 @@ How to drive, observe, and lint DAS hotkey scripts from WSL without touching the
 Verified live on 2026-09-24 against DAS 5.8.x (Cobra build) on the TR4425 paper account.
 Claims marked **(log)** are backed by lines in that day's DAS log file; claims marked
 **(socket)** were observed in socket replies, which DAS does not log. The harness is
-`tools/das_script_test.py`.
+`tools/das_script_test.py`. Price alerts have their own page: `docs/CMD-API-ALERTS.md`.
+
+**Start every session with `tools/das_script_test.py doctor`** (add `--connect` to log in and
+check the windows). It reports the running install and version, the port in `Config.cfg`
+against `.env`, whether hotkey scripting is on, the account, and the newest log. Every other
+mistake on this page looks like "DAS did not answer" until the preflight rules it out.
 
 ## The source that made this possible
 
@@ -84,6 +89,7 @@ because the `Error` line is only written to the log at the moment the dialog clo
 
 ## Test loop for a script
 
+0. **Preflight.** `das_script_test.py doctor`.
 1. **Static lint.** `das_script_test.py check scripts/NN.das` flags single quotes in code,
    which DAS rejects outright, and `&&` mixed with `||` without parentheses, which DAS
    accepts and evaluates left to right at one precedence (2026-10-15).
@@ -121,6 +127,10 @@ itself is in before any order test.
 
 ## Other things found along the way
 
+- **Which install (2026-11-19).** The running DAS is now 5.8.4.8 in `C:\Cobra Trading_x64-NEW`.
+  The harness reads `DAS_DIR` from the environment first, then `DAS_ROOT` from
+  `~/.claude/.env`, and only then the old default. `doctor` fails the process line when the
+  install read is not the one running.
 - **Two installs (2026-10-15).** Since 2026-10-07 the running DAS is the 5.8.4.4 Beta in
   `C:\Cobra Trading_x64-Beta`, with its own `Config.cfg` and `LOG\`. The harness defaults
   to `C:\Cobra Trading_x64` (5.8.2.5), finds no log for today there, and reports "no answer"
@@ -132,8 +142,12 @@ itself is in before any order test.
 
 - `Config.cfg` line `CMDAPI:PORT:3192` is the authoritative port. The harness warns if
   `~/.claude/.env` disagrees.
-- `*.htk` hotkey files are plain text: `Key:Name:~ <len>:<script with ~0D~0A escapes>`.
-  Generating them from `scripts/*.das` would remove the paste step. Not built yet.
+- `*.htk` hotkey files are plain text. `tools/gen_htk.py` reads and writes them, and the
+  format is in `docs/spec/features/002-hotkey-dashboard/plan.md` (built 2026-11-19).
+- **The manual has no alert commands** and no command to refresh orders or trades. Only
+  `POSREFRESH` exists. Orders, trades and positions are pushed after `LOGIN`, and a watch
+  login gets `%IORDER`, `%IPOS` and `%ITRADE`. The dastrader plugin's `cmd-api.md` predates
+  the manual and is wrong about the port and "one connection at a time".
 - `default.dsk` saved 2026-09-20 contains `montage1` and `hidden_chart1`, but the live
   desktop on 2026-09-24 had an unnamed montage. The API renamed it back. **Save Desktop.**
 - Something else on this machine already uses `SCRIPT frmMktViewer …`: the falcon market

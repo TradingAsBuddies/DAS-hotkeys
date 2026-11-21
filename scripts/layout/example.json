@@ -1,0 +1,72 @@
+{
+ "windows": [
+  {
+   "name": "lay_m1",
+   "type": "Montage",
+   "size": [
+    520,
+    900
+   ],
+   "pos": [
+    0,
+    0
+   ],
+   "symbol": "SPY",
+   "link": "Blue"
+  },
+  {
+   "name": "lay_c1",
+   "type": "Chart",
+   "size": [
+    1100,
+    900
+   ],
+   "pos": [
+    528,
+    0
+   ],
+   "symbol": "SPY",
+   "minutes": 1,
+   "days": 2,
+   "setting": "ema9-and-sma34.cst",
+   "link": "Blue"
+  },
+  {
+   "name": "lay_c5",
+   "type": "Chart",
+   "size": [
+    620,
+    900
+   ],
+   "pos": [
+    1636,
+    0
+   ],
+   "symbol": "SPY",
+   "minutes": 5,
+   "days": 10,
+   "setting": "ema9-and-ema21.cst",
+   "link": "Blue"
+  },
+  {
+   "name": "lay_m2",
+   "clone": "montage1",
+   "size": [
+    520,
+    900
+   ],
+   "pos": [
+    0,
+    908
+   ],
+   "symbol": "QQQ",
+   "buttons": {
+    "dash_box": {
+     "text": "READY",
+     "bg": "Green",
+     "fg": "White"
+    }
+   }
+  }
+ ]
+}

@@ -12,12 +12,17 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 
 | Path | |
 |---|---|
-| `scripts/` | Thirteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry |
+| `scripts/` | Fourteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry, bracket-at-fill |
 | `docs/spec/grammar.md` | The language grammar (draft): EBNF with every rule tagged documented, verified or inferred |
 | `docs/WISDOM.md` | What the 20 official DAS manuals actually say about scripting, with page citations |
 | `docs/DEFAULT-DESKTOP.md` | The base layer: `montage1` and `hidden_chart1`, named from script |
 | `docs/CMD-API-TESTING.md` | Driving and observing hotkey scripts from Python over the CMD API |
-| `tools/das_script_test.py` | The harness: inject script, read DAS's log, clear error dialogs, fetch bars |
+| `tools/das_script_test.py` | The harness: inject script, read DAS's log, clear error dialogs, fetch bars; `doctor` is the preflight |
+| `tools/das_alerts.py` | DAS price alerts over the CMD API: dry-run by default, idempotent `--send`, IsObj-guarded read-back, log audit (`docs/CMD-API-ALERTS.md`) |
+| `tools/das_layout.py` | Builds DAS windows by script from a JSON layout: create, name, size, place, chart symbol/timeframe/`.cst`, montage clones with buttons, button faces; dry-run by default (`docs/LAYOUT-BY-SCRIPT.md`) |
+| `tools/gen_cst.py` | Copies a saved chart setting (`.cst`) and patches moving-average periods, types and study names (the names `GetStudyVal()` uses); `list` shows a file's studies (`docs/LAYOUT-BY-SCRIPT.md`) |
+| `tools/gen_htk.py` | Reads and writes DAS `.htk` hotkey files; builds dashboard hotkeys from `scripts/htk/*.json` into `scripts/local/` |
+| `tools/four_box_feeder.py` | Writes Market Vision's SPY four-box read into the `dash_box` hot button over the CMD API; UNAVAILABLE when there is no fresh read. Display only |
 | `tools/fl_forward_test.py` | Forward-test driver: scans the day's gameplan on DAS bars, injects the FL scripts, closes at EOD, writes a report |
 | `docs/ROADMAP.md` · `docs/TECH-STACK.md` · `docs/CONSTITUTION.md` | Where this is going, what it runs on, the rules that do not change |
 | `docs/forward-tests/` | One dated log and report per forward test |
@@ -39,6 +44,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `10-ensure-default-desktop.das` | three hotkeys — A creates/names `montage1` and `hidden_chart1` if missing, B verifies, C un-hides. See `docs/DEFAULT-DESKTOP.md` |
 | `20-fl-long.das` / `21-fl-short.das` | FL entry with a 1.5×ATR stop-limit, driven by `$FL_SYM` / `$FL_QTY` / `$FL_ATR`; injected by the driver or bound to a hotkey |
 | `22-fl-flatten.das` | per-symbol close at any hour; `Panic` refuses outside market hours |
+| `30-bracket-at-fill.das` | montage button, two blocks (long, short): entry plus a 1.5×ATR SLP stop on the **filled** quantity, sized to 1R for the montage's account. R comes from `tools/baf_rconfig.py` (private Desktop Load snippet). UNVERIFIED until a SIM test; see its header |
 
 ## Things that cost time to learn
 

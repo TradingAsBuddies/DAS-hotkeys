@@ -1,0 +1,9 @@
+{
+  "comment": "Dashboard hotkeys (docs/spec/features/002-hotkey-dashboard). Built with tools/gen_htk.py build; output goes to the gitignored scripts/local/. No-key records, run from montage buttons with ExecHotkey.",
+  "hotkeys": [
+    {"name": "dash.baf_long",  "key": "", "source": "scripts/30-bracket-at-fill.das", "block": "A",
+     "button": {"window": "montage1", "label": "BAF LONG"}},
+    {"name": "dash.baf_short", "key": "", "source": "scripts/30-bracket-at-fill.das", "block": "B",
+     "button": {"window": "montage1", "label": "BAF SHORT"}}
+  ]
+}

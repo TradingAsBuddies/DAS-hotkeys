@@ -93,3 +93,9 @@ Any new script that talks to DAS must get these right:
 - Connection failures must not be reported as "no data". Helpers that log a warning and
   return `[]` on a refused connection hide the real fault — distinguish *no connection*
   from *no bars*.
+
+## Hotkey forum (2026-11-18)
+
+A pattern that should become a hotkey, chart button or montage button starts as a forum topic,
+gets built here, is reported to #falcon-cluster, and keeps collecting BUG / WORKS follow-ups in
+the same topic. See `docs/HOTKEY-FORUM.md`; the tool is `~/.claude/Tools/hotkey_forum.py`.

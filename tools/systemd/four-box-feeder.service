@@ -1,0 +1,17 @@
+[Unit]
+Description=Four-box readout: write Market Vision's SPY box into the DAS dash_box hot button
+Documentation=file://%h/Projects/DAS-hotkeys/tools/four_box_feeder.py
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/Projects/DAS-hotkeys/tools/four_box_feeder.py --every 60 --window montage3
+WorkingDirectory=%h/Projects/DAS-hotkeys
+# The running DAS install; its LOG folder is where the feeder reads each write's outcome.
+Environment="DAS_DIR=/mnt/c/Cobra Trading_x64-NEW"
+Environment=PYTHONUNBUFFERED=1
+# DAS down is reported as NO CONNECTION each cycle and retried; the process only exits on a crash.
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

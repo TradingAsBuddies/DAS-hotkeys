@@ -13,6 +13,7 @@ docs/CMD-API-TESTING.md for the evidence.
     das_script_test.py check scripts/00-fl-desktop-load.das --live
     das_script_test.py bars SPY --minutes 30
     das_script_test.py dismiss
+    das_script_test.py doctor [--connect]        # preflight before any API work
 
 Connection facts (CLAUDE.md): DAS binds loopback; host/port come from
 ~/.claude/.env (DAS_HOST, DAS_PORT, DAS_USER, DAS_PASSWORD, DAS_ACCOUNT) with
@@ -64,8 +65,20 @@ def load_env() -> dict[str, str]:
     return env
 
 
+def win_to_wsl(path: str) -> Path:
+    """C:\\Cobra Trading_x64-NEW -> /mnt/c/Cobra Trading_x64-NEW. A POSIX path passes through."""
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", path)
+    return Path(f"/mnt/{m.group(1).lower()}/{m.group(2).replace(chr(92), '/')}") if m else Path(path)
+
+
 def das_dir() -> Path:
-    return Path(os.environ.get("DAS_DIR", DEFAULT_DAS_DIR))
+    """The install whose Config.cfg and LOG/ to read. DAS_DIR in the environment wins,
+    then DAS_ROOT in ~/.claude/.env (the same key tools/hvc reads), then the old default.
+    `doctor` reports which install is actually running."""
+    if os.environ.get("DAS_DIR"):
+        return Path(os.environ["DAS_DIR"])
+    root = load_env().get("DAS_ROOT")
+    return win_to_wsl(root) if root else Path(DEFAULT_DAS_DIR)
 
 
 def config_port() -> int | None:
@@ -458,6 +471,86 @@ def cmd_dismiss(das: DAS | None, a) -> int:
     return 0
 
 
+def running_das() -> tuple[str, str] | None:
+    """(Windows path, file version) of the running DasTrader64.exe, or None."""
+    try:
+        out = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command",
+             "$p = Get-Process DasTrader64 -ErrorAction SilentlyContinue | Select-Object -First 1; "
+             "if ($p) { $p.Id; $p.Path; $p.FileVersion }"],
+            capture_output=True, text=True, timeout=20).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    if not lines:
+        return None
+    # An elevated DAS hides Path and version from a normal shell: running, path unknown.
+    return (lines[1] if len(lines) > 1 else "", lines[2] if len(lines) > 2 else "?")
+
+
+def cmd_doctor(_das: DAS | None, a) -> int:
+    """Preflight before any CMD API work. Reads files and the process list; with
+    --connect it also logs in (watch mode) and runs the window-existence oracle,
+    which injects only MsgLog lines."""
+    bad = 0
+
+    def line(ok: bool | None, what: str, detail: str) -> None:
+        nonlocal bad
+        bad += ok is False
+        print(f"{ {True: 'ok  ', False: 'FAIL', None: 'info'}[ok] }  {what:22} {detail}")
+
+    env = load_env()
+    d = das_dir()
+    run = running_das()
+    line(None, "install read", str(d))
+    if run is None:
+        line(False, "DAS process", "DasTrader64.exe not running (or powershell.exe unavailable)")
+    elif not run[0]:
+        line(None, "DAS process", "running; path unreadable (DAS elevated?), install not compared")
+    else:
+        same = win_to_wsl(run[0].rsplit("\\", 1)[0]).as_posix().lower() == d.as_posix().lower()
+        line(same, "DAS process", f"{run[0]} {run[1]}" + ("" if same else
+             f"  <- not the install read; set DAS_ROOT in ~/.claude/.env"))
+    cfg = d / "Config.cfg"
+    text = cfg.read_text(errors="replace") if cfg.exists() else ""
+    line(bool(text), "Config.cfg", str(cfg) if text else "missing")
+    cp = config_port()
+    try:
+        ep = int(env.get("DAS_PORT", ""))
+    except ValueError:
+        ep = None
+    line(cp is not None and cp == ep, "CMD API port", f"Config.cfg {cp}, .env DAS_PORT {ep}")
+    line("HOTKEY:UseScript:1" in text, "hotkey scripts", "HOTKEY:UseScript:1" if "HOTKEY:UseScript:1" in text
+         else "HOTKEY:UseScript is not 1: advanced scripting may be off")
+    acct, allowed = env.get("DAS_ACCOUNT", ""), os.environ.get("DAS_TEST_ACCOUNT", PAPER_ACCOUNT)
+    line(acct == allowed, "DAS_ACCOUNT", "the allowed test account" if acct == allowed
+         else "not the allowed test account: the harness will refuse to log in")
+    lf = log_file()
+    if lf.exists():
+        tail = lf.read_text(errors="replace").splitlines()[-1:] or [""]
+        line(True, "DAS log", f"{lf.name}, last stamp {tail[0][:8]}")
+    else:
+        line(False, "DAS log", f"{lf} missing")
+    if a.connect:
+        try:
+            das = DAS(env).connect()
+        except NoConnection as exc:
+            line(False, "login (watch)", str(exc))
+            return 1
+        try:
+            line(True, "login (watch)", f"{das.host}:{das.port}")
+            for w in a.windows:
+                try:
+                    r = das.exists(w)
+                    line(r, f"window {w}", "present" if r else "does not exist")
+                except (RuntimeError, NoConnection) as exc:
+                    line(False, f"window {w}", str(exc))
+        finally:
+            das.close()
+    print("doctor:", "all checks passed" if not bad else f"{bad} problem(s)")
+    return 1 if bad else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -470,7 +563,13 @@ def main() -> int:
     p = sub.add_parser("bars", help="minute bars via SB MINCHART"); p.add_argument("symbol")
     p.add_argument("--minutes", type=int, default=10); p.add_argument("--mintype", type=int, default=1)
     sub.add_parser("dismiss", help="close any ScriptError dialog via UI Automation")
+    p = sub.add_parser("doctor", help="preflight: running install, port, log; --connect adds login + windows")
+    p.add_argument("--connect", action="store_true")
+    p.add_argument("--windows", nargs="*", default=["montage1", "hidden_chart1"])
     a = ap.parse_args()
+
+    if a.cmd == "doctor":
+        return cmd_doctor(None, a)
 
     if a.cmd == "dismiss":
         return cmd_dismiss(None, a)

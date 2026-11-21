@@ -1,0 +1,13 @@
+[Unit]
+Description=HVC chart book — scan game plan + watchlist, publish to Notion
+Documentation=file://%h/Projects/DAS-hotkeys/docs/HVC-WATCHER.md
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/Projects/DAS-hotkeys/tools/hvc/run_nightly.sh
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=%h/Projects/DAS-hotkeys
+TimeoutStartSec=15min
+# Exit 1 = a symbol's data failed, 3 = Notion publish failed. Both mark the unit failed so
+# `systemctl --user status hvc-nightly` shows it; the book is still written locally.
