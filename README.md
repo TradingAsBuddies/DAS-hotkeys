@@ -12,7 +12,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 
 | Path | |
 |---|---|
-| `scripts/` | Fourteen `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry, bracket-at-fill |
+| `scripts/` | `.das` scripts — desktop bootstrap, layout builder, signal detection, order entry, montage buttons, bracket-at-fill and the montage3 desk buttons |
 | `docs/spec/grammar.md` | The language grammar (draft): EBNF with every rule tagged documented, verified or inferred |
 | `docs/WISDOM.md` | What the 20 official DAS manuals actually say about scripting, with page citations |
 | `docs/DEFAULT-DESKTOP.md` | The base layer: `montage1` and `hidden_chart1`, named from script |
@@ -44,7 +44,17 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `10-ensure-default-desktop.das` | three hotkeys — A creates/names `montage1` and `hidden_chart1` if missing, B verifies, C un-hides. See `docs/DEFAULT-DESKTOP.md` |
 | `20-fl-long.das` / `21-fl-short.das` | FL entry with a 1.5×ATR stop-limit, driven by `$FL_SYM` / `$FL_QTY` / `$FL_ATR`; injected by the driver or bound to a hotkey |
 | `22-fl-flatten.das` | per-symbol close at any hour; `Panic` refuses outside market hours |
-| `30-bracket-at-fill.das` | montage button, two blocks (long, short): entry plus a 1.5×ATR SLP stop on the **filled** quantity, sized to 1R for the montage's account. R comes from `tools/baf_rconfig.py` (private Desktop Load snippet). UNVERIFIED until a SIM test; see its header |
+| `30-load-shares.das` | montage buttons — LOAD 10/20/30/40/50/100, sets the share box |
+| `31-buy-ask-slp.das` / `32-buy-bid-slp.das` | montage buttons — Buy ASK/BID 10 and 50, each with an 11c SLP stop from the fill; unfilled BID remainder is cancelled |
+| `33-risk-buy-bid.das` | montage buttons — R$7 / R$15 BID buys and R$10 LOAD, sized to 1.5×ATR |
+| `34-cover-pct.das` | montage buttons — cover 100/50/25% of a short at ASK or BID; refuses unless short |
+| `35-buy-ask-range.das` | hotkey — buy at ASK+8c on REB25L, then a range exit from the fill: market stop −0.50, limit target +1.50; flat only, regular hours |
+| `36-short-bid-range.das` | hotkey — short at BID−8c on REB25L, then a range cover from the fill: market stop +0.50, limit target −1.50; mirror of `35` |
+| `40-bracket-at-fill.das` | montage button, two blocks (long, short): entry plus a 1.5×ATR SLP stop on the **filled** quantity, sized to 1R for the montage's account. R comes from `tools/baf_rconfig.py` (private Desktop Load snippet). UNVERIFIED until a SIM test; see its header |
+| `41-montage3-atr-entry.das` | montage3 buttons LONG / SHORT 1ATR: sized from the per-account R, limit 5c through the touch on the montage route, stop sent at the fill with no confirmation box, order id read back |
+| `42-montage-exits.das` | montage3 buttons CANCEL / FLATTEN: through the account and an order object, so they work while the montage is locked |
+| `43-montage3-targets.das` | montage3 button 1R 2R 3R: replaces the stop with three range orders, a third each, targets at 1, 2 and 3 × the R taken at entry |
+| `44-montage3-ah-stop.das` | montage3 button AH STOP: swaps the resting orders for one LimitP stop for the whole position |
 
 ## Things that cost time to learn
 

@@ -21,6 +21,11 @@
 //     characters missing from its middle on 2026-09-08 and
 //     became the nonexistent function $sSend(). Order strings
 //     are built in short steps and printed before sending.
+//
+//  3. QUOTE ANCHOR. The stop was computed from ASK/BID at the
+//     keypress, so a fill at the entry limit widened the risk
+//     by $entrySlip. It now anchors to the position average
+//     cost (same mechanism as 07/08). NOT YET VERIFIED ON SIM.
 // ==========================================================
 
 
@@ -59,8 +64,6 @@ if ($qty < 1) { MsgBox("qty is " + $qty); return; }
 $negSlip = 0 - $entrySlip;
 
 $entry   = Round($px - $negSlip, 2);
-$trigger = Round($px - $stopDist, 2);
-$limit   = Round($trigger - $limitSlip, 2);
 
 $oe = "B " + $qty;
 $oe = $oe + " " + $sym;
@@ -79,16 +82,38 @@ if ($pos < 1) {
   return;
 }
 
+// ---- anchor: stop from the FILL, not the ASK -------------
+// Same mechanism as 07: Price=AvgCost (hotkeys guide p.5)
+// writes the position average cost into the montage Price
+// box. A long cannot fill above its limit, so <= 0 or above
+// $entry is not a fill: fall back to the ASK anchor.
+FocusWindow montage1;
+Price=AvgCost;
+$fill = $m.Price;
+
+$anchor = $fill;
+$fb = 0;
+if ($fill <= 0)     { $fb = 1; }
+if ($fill > $entry) { $fb = 1; }
+if ($fb == 1) {
+  $anchor = $px;
+  MsgLog("BUY ", $sym, " FALLBACK ASK, fill=", $fill);
+}
+
+$trigger = Round($anchor - $stopDist, 2);
+$limit   = Round($trigger - $limitSlip, 2);
+
 $os = "S " + $pos;
 $os = $os + " " + $sym;
 $os = $os + " SLP " + $trigger;
 $os = $os + " " + $limit;
 $os = $os + " D+";
 
-MsgBox("STOP [" + $os + "]");
+MsgBox("STOP [" + $os + "] fill " + $fill);
 
 NewOrderObj($os).Send();
-MsgLog("BUY ", $sym, " ", $pos, " stop ", $trigger);
+MsgLog("BUY ", $sym, " ", $pos, " fill ", $fill);
+MsgLog("BUY ", $sym, " stop ", $trigger);
 
 
 // ==========================================================
@@ -126,8 +151,6 @@ $negStop = 0 - $stopDist;
 $negSlip = 0 - $limitSlip;
 
 $entry   = Round($px - $entrySlip, 2);
-$trigger = Round($px - $negStop, 2);
-$limit   = Round($trigger - $negSlip, 2);
 
 $oe = "SS " + $qty;
 $oe = $oe + " " + $sym;
@@ -147,13 +170,33 @@ if ($sz < 1) {
   return;
 }
 
+// ---- anchor: stop from the FILL, not the BID -------------
+// Same mechanism as 08. A short cannot fill below its limit,
+// so <= 0 or below $entry is not a fill: fall back to BID.
+FocusWindow montage1;
+Price=AvgCost;
+$fill = $m.Price;
+
+$anchor = $fill;
+$fb = 0;
+if ($fill <= 0)     { $fb = 1; }
+if ($fill < $entry) { $fb = 1; }
+if ($fb == 1) {
+  $anchor = $px;
+  MsgLog("SHORT ", $sym, " FALLBACK BID, fill=", $fill);
+}
+
+$trigger = Round($anchor - $negStop, 2);
+$limit   = Round($trigger - $negSlip, 2);
+
 $os = "B " + $sz;
 $os = $os + " " + $sym;
 $os = $os + " SLP " + $trigger;
 $os = $os + " " + $limit;
 $os = $os + " D+";
 
-MsgBox("STOP [" + $os + "]");
+MsgBox("STOP [" + $os + "] fill " + $fill);
 
 NewOrderObj($os).Send();
-MsgLog("SHORT ", $sym, " ", $sz, " stop ", $trigger);
+MsgLog("SHORT ", $sym, " ", $sz, " fill ", $fill);
+MsgLog("SHORT ", $sym, " stop ", $trigger);

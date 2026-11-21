@@ -10,6 +10,10 @@
 // Every order string here is built in steps and PRINTED
 // before sending, so a mangled paste is caught by eye rather
 // than sent as a malformed order.
+//
+// The stop anchors to the position average cost, not the
+// BID at signal time -- see "anchor" below and the note in
+// 07. NOT YET VERIFIED ON SIM.
 // ==========================================================
 
 // ---- inputs ----------------------------------------------
@@ -41,8 +45,6 @@ $negStop = 0 - $stopDist;
 $negSlip = 0 - $limitSlip;
 
 $entry   = Round($px - $entrySlip, 2);
-$trigger = Round($px - $negStop, 2);
-$limit   = Round($trigger - $negSlip, 2);
 
 // ---- build entry string ----------------------------------
 $oe = "SS " + $qty;
@@ -69,6 +71,26 @@ if ($sz < 1) {
   return;
 }
 
+// ---- anchor: stop from the FILL, not the BID -------------
+// Same mechanism as 07. A short cannot fill below its limit,
+// so a value <= 0 or below $entry is not a fill: fall back
+// to the BID anchor rather than arm no stop.
+FocusWindow montage1;
+Price=AvgCost;
+$fill = $m.Price;
+
+$anchor = $fill;
+$fb = 0;
+if ($fill <= 0)     { $fb = 1; }
+if ($fill < $entry) { $fb = 1; }
+if ($fb == 1) {
+  $anchor = $px;
+  MsgLog("SHORT ", $sym, " FALLBACK BID, fill=", $fill);
+}
+
+$trigger = Round($anchor - $negStop, 2);
+$limit   = Round($trigger - $negSlip, 2);
+
 // ---- build stop string -----------------------------------
 $os = "B " + $sz;
 $os = $os + " " + $sym;
@@ -76,16 +98,19 @@ $os = $os + " SLP " + $trigger;
 $os = $os + " " + $limit;
 $os = $os + " D+";
 
-MsgBox("STOP [" + $os + "]");
+MsgBox("STOP [" + $os + "] fill " + $fill);
 
 NewOrderObj($os).Send();
-MsgLog("SHORT ", $sym, " ", $sz, " stop ", $trigger);
+MsgLog("SHORT ", $sym, " ", $sz, " fill ", $fill);
+MsgLog("SHORT ", $sym, " stop ", $trigger);
 
 
 // ==========================================================
-// On DELL Bid 527.66 this builds:
+// On DELL Bid 527.66, filled at 527.66, this builds:
 //   ENTRY [SS 5 DELL L 527.51 D+]
 //   STOP  [B 5 DELL SLP 527.77 527.82 D+]
+// Filled at the limit 527.51 instead, the stop follows it:
+//   STOP  [B 5 DELL SLP 527.62 527.67 D+]
 //
 // If either box shows a string missing a chunk, the paste was
 // truncated -- do not press OK, fix the script.

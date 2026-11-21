@@ -3,6 +3,8 @@
 // ============================================================================
 // Mirror of 20-fl-long.das. Same globals ($FL_SYM, $FL_QTY, $FL_ATR), same
 // driver, same no-MsgBox rule. Stop sits ABOVE the entry.
+// The stop anchors to the position average cost, not the BID at signal time
+// (same mechanism as 08). NOT YET VERIFIED ON SIM.
 // ============================================================================
 
 $stopMult  = 1.5;
@@ -28,8 +30,6 @@ if ($stopDist < 0.02) { MsgLog("FL SHORT refused: stop too tight ", $stopDist); 
 $negStop = 0 - $stopDist;
 $negSlip = 0 - $limitSlip;
 $entry   = Round($px - $entrySlip, 2);        // BID - slip
-$trigger = Round($px - $negStop, 2);          // BID + stopDist
-$limit   = Round($trigger - $negSlip, 2);     // trigger + limitSlip
 
 $oe = "SS " + $FL_QTY;
 $oe = $oe + " " + $FL_SYM;
@@ -46,6 +46,25 @@ if ($sz < 1) {
   return;
 }
 
+// ---- anchor: stop from the FILL, not the BID -------------
+// Same mechanism as 08. A short cannot fill below its limit,
+// so <= 0 or below $entry is not a fill: fall back to BID.
+FocusWindow montage1;
+Price=AvgCost;
+$fill = $m.Price;
+
+$anchor = $fill;
+$fb = 0;
+if ($fill <= 0)     { $fb = 1; }
+if ($fill < $entry) { $fb = 1; }
+if ($fb == 1) {
+  $anchor = $px;
+  MsgLog("FL SHORT ", $FL_SYM, " FALLBACK BID, fill=", $fill);
+}
+
+$trigger = Round($anchor - $negStop, 2);
+$limit   = Round($trigger - $negSlip, 2);
+
 $os = "B " + $sz;
 $os = $os + " " + $FL_SYM;
 $os = $os + " SLP " + $trigger;
@@ -53,4 +72,4 @@ $os = $os + " " + $limit;
 $os = $os + " D+";
 MsgLog("FL STOP [", $os, "]");
 NewOrderObj($os).Send();
-MsgLog("FL DONE SHORT ", $FL_SYM, " ", $sz, " entry~", $entry, " stop ", $trigger);
+MsgLog("FL DONE SHORT ", $FL_SYM, " ", $sz, " fill ", $fill, " stop ", $trigger);
