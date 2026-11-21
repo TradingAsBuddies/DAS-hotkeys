@@ -110,7 +110,7 @@ if ($sym == $DASH_LOCK2) { MsgLog("DASH REFUSE lock"); return; }
 if ($sym == $DASH_LOCK3) { MsgLog("DASH REFUSE lock"); return; }
 ```
 
-Size: `$r = $r * $DASH_SIZE;` goes before the whole-share loop in script 30, so half size still
+Size: `$r = $r * $DASH_SIZE;` goes before the whole-share loop in script 40, so half size still
 comes out in whole shares. `GetSecond()` wraps at midnight. That is harmless inside a morning
 trading window, and it is written down here so nobody is surprised.
 
@@ -145,13 +145,13 @@ missed trade when the service dies. Fail open costs a re-entry like 08-28.
 
 | Button | Script | State |
 |---|---|---|
-| BAF LONG / BAF SHORT | `scripts/30-bracket-at-fill.das` blocks A and B, plus the gate | BUILT; SIM test pending (U1–U6) |
+| BAF LONG / BAF SHORT | `scripts/40-bracket-at-fill.das` blocks A and B, plus the gate | BUILT; SIM test pending (U1–U6) |
 | BE STOP | Moves the stop to the average cost on the filled position. The video's breakeven key; `tm` has the engine logic | not built; propose as a forum topic |
 | FLAT LONG / FLAT SHORT | Per-symbol limit close, the `22-fl-flatten.das` pattern. It needs two buttons because a button only has the unsigned `.POS`, and guessing the side is how the 09-25 double short happened. If the close does not fill, it places the stop again | **[I]**: script 22 ran only when a driver supplied a signed side |
 | FLAT ALL | Level 3 needs every position flat and every order cancelled; one button per montage symbol is not enough | **[I]**, not built |
 | CXL SYM | Cancels working entries on the symbol and **refuses while `POS != 0`**, because `CancelOrder("BUY\|SELL", sym)` also cancels the protective stop (CONSTITUTION §1.3) | **[V]** that the call cancels (script 22); refusal not built |
 
-Cloned montages: script 30 sets `$bafMontage = "montage1"` itself, so a copy made with
+Cloned montages: script 40 sets `$bafMontage = "montage1"` itself, so a copy made with
 `DuplicateWindow` would trade montage1's symbol and account. In the generated version, each thin
 button sets `$bafMontage` to its own window name before `ExecHotkey`, and the generated script
 does not assign it.

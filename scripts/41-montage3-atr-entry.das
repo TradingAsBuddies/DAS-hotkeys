@@ -1,5 +1,5 @@
 // ==========================================================
-// 31-montage3-atr-entry.das   limit entry + 1 x ATR(14) SLP stop
+// 41-montage3-atr-entry.das   limit entry + 1 x ATR(14) SLP stop
 // Block A = LONG.  Block B = SHORT.  Built into no-key hotkeys
 // m3.long_1atr / m3.short_1atr by tools/gen_htk.py
 // (scripts/htk/montage3.json); each montage3 button runs one
@@ -12,7 +12,7 @@
 //     on a refusal (nothing sent) or when a stop could not be trusted.
 //   - Entry is a limit 0.05 through the touch (ASK + 0.05 / BID - 0.05),
 //     the operator choice. It was 0.15.
-//   - The stop follows the fill by itself, as 30-bracket-at-fill.das:
+//   - The stop follows the fill by itself, as 40-bracket-at-fill.das:
 //     poll the position up to 10 s, cancel whatever is still working on
 //     the symbol (only the entry can be: the button refuses unless flat),
 //     re-read the position, send the SLP stop for exactly that size, then
@@ -26,10 +26,10 @@
 //     the order object it holds. No id means not accepted: it says NO STOP.
 //     [V replay 2026-11-21: the id matched the trade log every time.
 //     GetOrderObj() found no order by any filter, and Status stays "N/A".]
-//   - A new entry clears $M3_OA/B/C, the range-order objects script 33
-//     keeps, so script 34 never acts on a previous trade.
+//   - A new entry clears $M3_OA/B/C, the range-order objects script 43
+//     keeps, so script 44 never acts on a previous trade.
 //   - $M3_SYM / $M3_SIDE / $M3_STOP record the side and stop sent, for
-//     FLATTEN (script 32) and TARGETS (script 33): the montage POS is
+//     FLATTEN (script 42) and TARGETS (script 43): the montage POS is
 //     unsigned and a resting stop cannot be read back.
 // Study name "ATR(14)" on montage3_chart1; a missing study reads 0.
 // SIZE. qty is the most whole shares for which
@@ -41,7 +41,7 @@
 // never typed here. No R for the account, or under one share: it refuses.
 // The montage Share box is no longer used. $stopMult = 1.0.
 // At the fill it records $M3_ENTRY (average cost) and $M3_R (the stop
-// distance per share) so script 33 sets targets from the R taken at entry.
+// distance per share) so script 43 sets targets from the R taken at entry.
 // [V replay 2026-11-21 14:58-15:15 ET, montage locked] one press each:
 // SHORT went out as "SHORT <sym> 5 REB25 Limit", filled the same second, the
 // stop followed 1 s later; LONG the same with a sell stop below. Earlier

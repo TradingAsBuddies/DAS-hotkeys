@@ -1,13 +1,13 @@
 // ==========================================================
-// 34-montage3-ah-stop.das   after hours: one LimitP stop for the position
+// 44-montage3-ah-stop.das   after hours: one LimitP stop for the position
 // Built into the no-key hotkey m3.ahstop by tools/gen_htk.py
 // (scripts/htk/montage3.json); the second-row montage3 button runs
 // ExecHotkey("m3.ahstop");
 //
-// WHY. The 1R 2R 3R button (script 33) leaves three range orders. A range
+// WHY. The 1R 2R 3R button (script 43) leaves three range orders. A range
 // order is a regular-hours order as far as is known; the LimitP stop is the
 // pre/post-market type. At the 16:00 ET close the operator presses this to
-// swap whatever script 33 left for ONE LimitP stop covering the whole
+// swap whatever script 43 left for ONE LimitP stop covering the whole
 // remaining position. No targets rest after hours: DAS has no OCO for
 // order objects (properties OCO, Trigger, TriggerOrder do not exist, probed
 // 2026-11-21), and three stops beside three unlinked targets would leave
@@ -15,7 +15,7 @@
 //
 // WHAT ONE PRESS DOES
 //   1. Refuses unless montage3 holds a position whose side and stop price
-//      script 31 recorded, and no other m3 button is still running.
+//      script 41 recorded, and no other m3 button is still running.
 //   2. Cancels every working order on the symbol (through the account).
 //   3. Sends ONE LimitP stop for the whole position.
 //   4. Waits 1.1 s and reads the order object it holds. DAS fills in the
@@ -25,14 +25,14 @@
 //   Between 2 and 3 the position has no stop for about half a second.
 //
 // WHY NOT "new stop first". Tried 2026-11-21 (replay): the new stop was
-// accepted, but Cancel() on the range-order objects script 33 kept
+// accepted, but Cancel() on the range-order objects script 43 kept
 // cancelled nothing, and GetOrderObj() finds no order at all, so there was
 // no way to remove only the range orders. The stop and the range orders
 // then rested together, twice the position, until CANCEL was pressed.
 //
-// WHY THE BUSY FLAG. That press also came while script 33 was still
-// between its 2R and 3R sends: the two scripts interleaved. Scripts 33
-// and 34 now set $M3_BUSY while they run and refuse while it is set. A
+// WHY THE BUSY FLAG. That press also came while script 43 was still
+// between its 2R and 3R sends: the two scripts interleaved. Scripts 43
+// and 44 now set $M3_BUSY while they run and refuse while it is set. A
 // script that dies part-way leaves it set: PING clears it.
 //
 // [V replay 2026-11-21 16:35-16:38 ET, both sides, run over the CMD API]

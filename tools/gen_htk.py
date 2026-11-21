@@ -34,7 +34,7 @@ refuses a path git would track.
 Manifest (JSON):
 
     {"hotkeys": [
-      {"name": "dash.baf_long", "key": "", "source": "scripts/30-bracket-at-fill.das",
+      {"name": "dash.baf_long", "key": "", "source": "scripts/40-bracket-at-fill.das",
        "block": "A", "button": {"window": "montage1", "label": "BAF LONG"}}
     ]}
 

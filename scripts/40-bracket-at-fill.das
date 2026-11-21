@@ -1,5 +1,5 @@
 // ==========================================================
-// 30-bracket-at-fill.das   entry + 1.5 x ATR stop on the
+// 40-bracket-at-fill.das   entry + 1.5 x ATR stop on the
 //                          FILLED quantity, sized to 1R
 // Montage button.  Block A = LONG.  Block B = SHORT.
 // Bind each block to its own button.

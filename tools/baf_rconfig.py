@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write the per-account R globals that scripts/30-bracket-at-fill.das reads.
+"""Write the per-account R globals that scripts/40-bracket-at-fill.das reads.
 
 R is never typed into a script. This reads the R-CONFIG table in the private Trading
 PREFERENCES (the single source of truth for R per account) and writes

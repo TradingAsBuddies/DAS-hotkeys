@@ -2,7 +2,7 @@
 // rconfig.example.das   the shape of the per-account R globals
 //
 // R is the money risk unit for one account. It follows account size and
-// is not typed into any button script: scripts 30 and 31 read these
+// is not typed into any button script: scripts 40 and 41 read these
 // globals and size a position so that a stop-out loses at most 1R.
 //
 // The real file is scripts/local/baf-rconfig.das (gitignored: it holds

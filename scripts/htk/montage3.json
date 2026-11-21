@@ -4,7 +4,7 @@
     {
       "name": "m3.long_1atr",
       "key": "",
-      "source": "scripts/31-montage3-atr-entry.das",
+      "source": "scripts/41-montage3-atr-entry.das",
       "block": "A",
       "button": {
         "window": "montage3",
@@ -17,7 +17,7 @@
     {
       "name": "m3.short_1atr",
       "key": "",
-      "source": "scripts/31-montage3-atr-entry.das",
+      "source": "scripts/41-montage3-atr-entry.das",
       "block": "B",
       "button": {
         "window": "montage3",
@@ -40,7 +40,7 @@
     {
       "name": "m3.cancel",
       "key": "",
-      "source": "scripts/32-montage-exits.das",
+      "source": "scripts/42-montage-exits.das",
       "block": "A",
       "button": {
         "window": "montage3",
@@ -53,7 +53,7 @@
     {
       "name": "m3.flatten",
       "key": "",
-      "source": "scripts/32-montage-exits.das",
+      "source": "scripts/42-montage-exits.das",
       "block": "B",
       "button": {
         "window": "montage3",
@@ -66,7 +66,7 @@
     {
       "name": "m3.targets",
       "key": "",
-      "source": "scripts/33-montage3-targets.das",
+      "source": "scripts/43-montage3-targets.das",
       "button": {
         "window": "montage3",
         "label": "1R 2R 3R",
@@ -79,7 +79,7 @@
     {
       "name": "m3.ahstop",
       "key": "",
-      "source": "scripts/34-montage3-ah-stop.das",
+      "source": "scripts/44-montage3-ah-stop.das",
       "button": {
         "window": "montage3",
         "label": "AH STOP",

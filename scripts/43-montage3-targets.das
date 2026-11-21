@@ -1,15 +1,15 @@
 // ==========================================================
-// 33-montage3-targets.das   scale out in thirds at 1R, 2R, 3R
+// 43-montage3-targets.das   scale out in thirds at 1R, 2R, 3R
 // Built into the no-key hotkey m3.targets by tools/gen_htk.py
 // (scripts/htk/montage3.json); the second-row montage3 button runs
 // ExecHotkey("m3.targets");
 //
 // WHAT ONE PRESS DOES
 //   1. Refuses unless montage3 holds 3 or more shares of a symbol whose
-//      side and stop price script 31 recorded ($M3_SYM, $M3_SIDE,
+//      side and stop price script 41 recorded ($M3_SYM, $M3_SIDE,
 //      $M3_STOP). The montage POS is unsigned, so a position opened any
 //      other way has no known side and is refused.
-//   2. R (per share) and the entry price are the ones script 31 recorded
+//   2. R (per share) and the entry price are the ones script 41 recorded
 //      at the fill ($M3_R, $M3_ENTRY).
 //   3. Cancels every working order on the symbol (the single full-size
 //      stop), then sends THREE range orders, one third of the position
@@ -38,7 +38,7 @@
 // second apart with no route in the string; with no targets hit, all three
 // later stopped out together and left the position flat. NOT yet seen: a
 // target filling and leaving the other two; live paper; range orders
-// outside regular hours (script 34 swaps them for a LimitP stop).
+// outside regular hours (script 44 swaps them for a LimitP stop).
 // It sets $M3_BUSY while it runs: a second m3 button pressed part-way
 // interleaved with it on 2026-11-21. PING clears a stuck flag.
 // If DAS opens an order dialog after a press, cancel it: the order string
@@ -64,7 +64,7 @@ if ($M3_SIDE == "S") { $dir = 2; }
 if ($dir == 0)  { MsgLog("TARGETS REFUSED ", $sym, ": side not recorded"); MsgBox("no recorded side - " + $sym); return; }
 if ($stop == 0) { MsgLog("TARGETS REFUSED ", $sym, ": stop not recorded"); MsgBox("no recorded stop - " + $sym); return; }
 
-// R per share and the entry price are the ones script 31 recorded at the
+// R per share and the entry price are the ones script 41 recorded at the
 // fill, so targets do not move if the stop or the average cost changes
 $r = $M3_R;
 if ($M3_ENTRY > 0) { $avg = $M3_ENTRY; }

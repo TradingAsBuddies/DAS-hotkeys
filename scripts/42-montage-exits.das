@@ -1,5 +1,5 @@
 // ==========================================================
-// 32-montage-exits.das   exits for a locked montage
+// 42-montage-exits.das   exits for a locked montage
 // Block A = CANCEL (this symbol, both sides).  Block B = FLATTEN.
 // Built into no-key hotkeys m3.cancel / m3.flatten by tools/gen_htk.py
 // (scripts/htk/montage3.json); the montage3 panel buttons run them with
@@ -10,7 +10,7 @@
 // ran, logged success, and did nothing: no cancel, no order. Route=Market
 // also raised "Properity Market not exist". So exits use only what got
 // through that day: the account object for cancels (as 22-fl-flatten.das)
-// and an order object for the close (as script 31 sends its orders).
+// and an order object for the close (as script 41 sends its orders).
 //
 // [V replay 2026-11-21 15:15 ET, montage locked] CANCEL cancelled a resting
 // stop; FLATTEN covered a short with B and closed a long with S, each as
@@ -18,7 +18,7 @@
 // recorded it refused. Live paper in regular hours is still to do.
 //
 // The montage .POS is unsigned on this build (22-fl-flatten.das), so
-// FLATTEN cannot tell long from short by itself. Script 31 records the side
+// FLATTEN cannot tell long from short by itself. Script 41 records the side
 // it opened in $M3_SIDE / $M3_SYM. FLATTEN refuses when that record does
 // not match the montage symbol; then use the Panic hotkey.
 // Before any m3 entry this session, reading $M3_SYM logs one
