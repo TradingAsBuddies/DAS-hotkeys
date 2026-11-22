@@ -271,8 +271,12 @@ BUILD_TOKEN = "@BUILD@"
 def build_stamp() -> str:
     """When this .htk was built, in US Eastern time, the clock the DAS log uses."""
     from datetime import datetime
-    from zoneinfo import ZoneInfo
-    return datetime.now(ZoneInfo("America/New_York")).strftime("%m-%d %H:%M:%S")
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        now = datetime.now(ZoneInfo("America/New_York"))
+    except ZoneInfoNotFoundError:      # Windows Python without the tzdata package
+        now = datetime.now()           # local time: still unique per build
+    return now.strftime("%m-%d %H:%M:%S")
 
 
 def stamp_build(body: str, stamp: str) -> str:
@@ -291,7 +295,7 @@ def cmd_build(a) -> int:
         print(f"REFUSED: git would track {out}; write under scripts/local/")
         return 2
     records, problems, buttons = [], [], []
-    stamp = build_stamp()
+    stamp = getattr(a, "stamp", None) or build_stamp()   # a caller may supply its own
     print(f"build stamp {stamp} (PING logs and shows it once this file is loaded)")
     for h in man["hotkeys"]:
         src = (REPO / h["source"]).read_text()
@@ -442,6 +446,7 @@ def cmd_cbf(a) -> int:
         print(f"NOT WRITTEN: {e}")
         return 1
     outdir = REPO / "scripts" / "local"
+    a.written = []                      # for callers: the panel files this run wrote
     for win, btns in panels.items():
         names = [b.name.lower() for b in btns]
         if len(set(names)) != len(names):
@@ -451,6 +456,7 @@ def cmd_cbf(a) -> int:
         data = serialize_cbf(btns)
         assert parse_cbf(data)[0] == btns
         out.write_bytes(data)
+        a.written.append(out)
         print(f"wrote {out}: {len(btns)} button(s) for {win}")
         for b in btns:
             print(f"   row {b.kind}  {b.name:16} {b.text!r:20} {b.script}")

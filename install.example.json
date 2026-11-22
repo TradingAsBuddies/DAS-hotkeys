@@ -1,0 +1,7 @@
+{
+  "comment": "Copy to install.local.json (gitignored) and set das_dir to YOUR DAS Trader folder: the one that holds Config.cfg. The installer never picks a folder for you. base_hotkeys is the hotkey file you use now; its records are kept and the montage3 ones are added. Set it to \"\" only if you have no hotkeys to keep.",
+  "das_dir": "C:\\DAS Trader Pro_x64",
+  "manifest": "scripts/htk/montage3.json",
+  "base_hotkeys": "Hotkey.htk",
+  "hotkey_file": "montage3.htk"
+}

@@ -39,3 +39,6 @@ scripts/local/
 
 # Chart settings hold an account ID and symbol history (CONSTITUTION 16)
 *.cst
+
+# The installer config holds the path of a local DAS install
+install.local.json

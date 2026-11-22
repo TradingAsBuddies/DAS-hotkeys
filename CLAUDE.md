@@ -21,7 +21,7 @@ Git repo on `main`. `README.md` is the public-facing overview; this file is the 
 | `backtest/` | `fetch_bars.py` (Polygon REST), `fetch_flatfiles.sh` (Massive flat files), `backtest_fl.py`, `backtest_fl_week.py`, `backtest_sma34_trend.py`, `catalysts/` (SEC EDGAR); output in `results/` |
 | `docs/` | `CONSTITUTION.md` (rules that never change, read first), `WISDOM.md`, `spec/grammar.md` (the language grammar), `CMD-API-TESTING.md`, `ROADMAP.md`, `TECH-STACK.md`, `forward-tests/`, `playbook/`, `manuals/MANIFEST.md` |
 
-There is **no build system.** The Python tools have unit tests in `tests/`; `.das` scripts are
+There is **no build step.** `tools/install.py` (or `make install`) builds the montage3 hotkey file and panels and copies them into the DAS folder named in the gitignored `install.local.json`; it is a dry run without `--write` and never chooses a folder itself. The Python tools have unit tests in `tests/`; `.das` scripts are
 tested through the CMD API harness, and order scripts are only ever tested by sending a real order on the **TR4425 paper
 account** (`docs/CONSTITUTION.md` §1 — there is no dry run of an order script):
 

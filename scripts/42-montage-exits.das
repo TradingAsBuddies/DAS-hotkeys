@@ -24,9 +24,17 @@
 // Before any m3 entry this session, reading $M3_SYM logs one
 // "variable not exist" script error and FLATTEN refuses. That is expected.
 //
-// The close is a limit through the spread on the montage route (any hour),
-// or a market order when the montage route is MARKET (regular hours only). No MsgBox: an exit must never wait for a click.
+// The close is a limit 0.15 through the spread on the montage route (any
+// hour). When the montage route is MARKET or STOP, which cannot carry a
+// limit, it is a market order (regular hours only; UNTESTED [I]). Market
+// orders are for FLATTEN only: entries are always limits. No MsgBox: an
+// exit must never wait for a click.
 // Every log line states what was sent, not that it worked.
+// [V replay 2026-11-22 01:00-01:04 ET, API and button] with the default
+// account different from the montage account: the old close was prepared
+// on the default account and never accepted; with .account set it was
+// accepted and filled on the montage account the same second.
+// UNTESTED [I]: the market-order path on route MARKET or STOP.
 // ==========================================================
 
 
@@ -88,17 +96,29 @@ $o = $side + " " + $pos;
 $o = $o + " " + $sym;
 // 2026-11-21: with the montage on route MARKET, "... MARKET L <px> D+"
 // was refused (Send Order error) after the stop was already cancelled.
-// A market route takes a market order; any other route takes the limit.
-if ($rt == "MARKET") {
+// 2026-11-22: after a restart the montage came back on route STOP, which
+// cannot carry a limit either. On those two routes FLATTEN sends a market
+// order so it still closes (operator, 2026-11-22: a market order is right
+// for FLATTEN; entries stay limits). Any other route takes the limit.
+$mkt = 0;
+if ($rt == "MARKET") { $mkt = 1; }
+if ($rt == "STOP") { $mkt = 1; }
+if ($mkt == 1) {
   $o = $o + " MARKET M D+";
 }
-if ($rt != "MARKET") {
+if ($mkt == 0) {
   $o = $o + " " + $rt;
   $o = $o + " L " + $px;
   $o = $o + " D+";
 }
 MsgLog("EXIT flatten sending [", $o, "]");
-NewOrderObj($o).Send();
+// 2026-11-22: this order used to go out with no account set. That worked
+// while the default account matched the montage. After a desktop restore the
+// default differed: the close was never accepted, twice, AFTER the stop had
+// been cancelled. The order now names the montage account, as entries do.
+$oc = NewOrderObj($o);
+$oc.account = $m.Account;
+$oc.Send();
 // 2026-11-21: a 1.5 s check logged "POS now 5" one second before the fill.
 // Poll up to 10 s, then say plainly whether it closed.
 $i = 0;

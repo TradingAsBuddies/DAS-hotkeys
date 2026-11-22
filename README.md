@@ -56,6 +56,33 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `43-montage3-targets.das` | montage3 button 1R 2R 3R: replaces the stop with three range orders, a third each, targets at 1, 2 and 3 × the R taken at entry |
 | `44-montage3-ah-stop.das` | montage3 button AH STOP: swaps the resting orders for one LimitP stop for the whole position |
 
+## Install the montage3 buttons
+
+Works the same on Windows and Linux (WSL). It needs Python 3.11 or later and git; nothing else.
+
+1. Copy `install.example.json` to `install.local.json`. Set `das_dir` to **your** DAS Trader
+   folder, the one that holds `Config.cfg`, and `base_hotkeys` to the hotkey file you use now.
+   The local file is gitignored.
+2. Dry run. It builds the files and says what it would copy, and writes nothing to DAS:
+   ```sh
+   python tools/install.py          # or: make install-dry
+   ```
+3. Copy for real. Each file it replaces is backed up under `scripts/local/backup/` first:
+   ```sh
+   python tools/install.py --write  # or: make install
+   ```
+4. In DAS: Setup > Hotkey > Load the hotkey file, then load each `.cbf` from its montage's
+   button menu. Press PING: it shows the build time the installer printed.
+
+The installer never chooses a DAS folder. A machine can hold several installs, so with no
+config it stops and lists the ones it found (`python tools/install.py --list`), marking the
+one DAS is running from. The default path in the example is a guess at the vendor default
+and may not match your install.
+
+It does not install an account ID, an R value or a chart setting. Those are yours: see
+`scripts/rconfig.example.das` and `tools/gen_cst.py`. Loading the files in DAS stays manual,
+because DAS has no command for it.
+
 ## Things that cost time to learn
 
 - **Advanced scripting is off by default.** Setup → Other Configuration → *Hotkey Advanced Script*.

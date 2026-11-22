@@ -88,6 +88,10 @@ if ($px == 0)    { MsgLog("LONG refused: no ASK"); MsgBox("no ASK"); return; }
 if ($rt == "")   { MsgLog("LONG refused: no route"); MsgBox("no route on montage3"); return; }
 if ($acct == "") { MsgLog("LONG refused: no account"); MsgBox("no account on montage3"); return; }
 if ($rt == "MARKET") { MsgLog("LONG refused: route MARKET"); MsgBox("montage3 route is MARKET - pick a limit route"); return; }
+// 2026-11-22: after a DAS restart the montage came back on route STOP; the
+// entry went out as "... STOP L <px>", which DAS turned into its order dialog
+// and a trailing order. A limit entry needs a limit route.
+if ($rt == "STOP") { MsgLog("LONG refused: route STOP"); MsgBox("montage3 route is STOP - pick a limit route"); return; }
 if ($m.POS != 0) { MsgLog("LONG refused: ", $sym, " POS ", $m.POS, ", not flat"); MsgBox("not flat - " + $sym); return; }
 
 $stopDist = Round($stopMult * $atr, 2);
@@ -265,6 +269,10 @@ if ($px == 0)    { MsgLog("SHORT refused: no BID"); MsgBox("no BID"); return; }
 if ($rt == "")   { MsgLog("SHORT refused: no route"); MsgBox("no route on montage3"); return; }
 if ($acct == "") { MsgLog("SHORT refused: no account"); MsgBox("no account on montage3"); return; }
 if ($rt == "MARKET") { MsgLog("SHORT refused: route MARKET"); MsgBox("montage3 route is MARKET - pick a limit route"); return; }
+// 2026-11-22: after a DAS restart the montage came back on route STOP; the
+// entry went out as "... STOP L <px>", which DAS turned into its order dialog
+// and a trailing order. A limit entry needs a limit route.
+if ($rt == "STOP") { MsgLog("SHORT refused: route STOP"); MsgBox("montage3 route is STOP - pick a limit route"); return; }
 if ($m.POS != 0) { MsgLog("SHORT refused: ", $sym, " POS ", $m.POS, ", not flat"); MsgBox("not flat - " + $sym); return; }
 
 $stopDist = Round($stopMult * $atr, 2);
