@@ -51,7 +51,7 @@ entirely in one 40-page PDF. This repo is what that language is actually good fo
 | `35-buy-ask-range.das` | hotkey — buy at ASK+8c on REB25L, then a range exit from the fill: market stop −0.50, limit target +1.50; flat only, regular hours |
 | `36-short-bid-range.das` | hotkey — short at BID−8c on REB25L, then a range cover from the fill: market stop +0.50, limit target −1.50; mirror of `35` |
 | `40-bracket-at-fill.das` | montage button, two blocks (long, short): entry plus a 1.5×ATR SLP stop on the **filled** quantity, sized to 1R for the montage's account. R comes from `tools/baf_rconfig.py` (private Desktop Load snippet). UNVERIFIED until a SIM test; see its header |
-| `41-montage3-atr-entry.das` | montage3 buttons LONG / SHORT 1ATR: sized from the per-account R, limit 5c through the touch on the montage route, stop sent at the fill with no confirmation box, order id read back |
+| `41-montage3-atr-entry.das` | montage3 buttons LONG / SHORT 1ATR: sized from the per-account R, limit 5c through the touch on the montage route, stop sent at the fill with no confirmation box, order id read back, then named rays drawn at 1R, 2R and 3R |
 | `42-montage-exits.das` | montage3 buttons CANCEL / FLATTEN: through the account and an order object, so they work while the montage is locked |
 | `43-montage3-targets.das` | montage3 button 1R 2R 3R: replaces the stop with three range orders, a third each, targets at 1, 2 and 3 × the R taken at entry |
 | `44-montage3-ah-stop.das` | montage3 button AH STOP: swaps the resting orders for one LimitP stop for the whole position |

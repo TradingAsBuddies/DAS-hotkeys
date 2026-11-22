@@ -76,6 +76,35 @@ tools/gen_cst.py make ema9-and-ema21.cst --ma 2:sma:50 --name 1:EMA9 --name 2:SM
 - A `.cst` holds an account ID and symbol history, so `*.cst` is gitignored and `list` prints
   neither.
 
+## Lines on a chart (trend-line objects)
+
+The manuals give one drawing call that takes a price, `DrawHorzLineWithPrice(price, color)`
+**[D adv p.37]**. The chart object has more, in no manual, found with `ShowObject()` on
+DAS 5.8.4.8 **[V 2026-11-21, replay]**:
+
+- `$t = $chart.CreateTrendLine("rayline");` returns a trend-line object. `"horizline"` and
+  `"trendline"` also work; `"ray"` returns no object.
+- Its properties: `Name`, `Type` (read back as `Ray Line`), `Price`, `Time`, `Price1`, `Time1`,
+  `color` (a BGR integer: 65280 is green), `LineStyle`, `LineWidth`, `Visible`, `Global`,
+  `LabelTextColor`, `LabelBgColor`. Functions: `Delete()`, `SendToGlobal()`, `SendToGlobalTF()`.
+- The line exists as soon as it is created. There is no save call: `save()`, used in examples
+  on the web, raised `Function save not exist for Object!`.
+- A ray needs two points. `$chart.GetBar(-1).Time` (text like `20261120 05:48:00`) can be
+  assigned to `Time` as it is; it reads back as `2026/11/20 05:48:00`.
+- `$chart.GetTrendline("name")` finds a line by name, and returns no object for a name that is
+  not there. That gives delete-then-redraw without `RemoveAllTrendLines`, which would also
+  delete the operator's own lines.
+- Lines drawn by hand or by `DrawHorzLineWithPrice` carry a default name (`TrendLineHoriz`,
+  `TrendLineRay`), so they cannot be told apart by name. Name every line a script draws.
+- A montage hotkey can draw on a chart through the chart's window object; no focus change is
+  needed.
+
+`scripts/41-montage3-atr-entry.das` uses this to draw rays at 1R, 2R and 3R from the entry bar,
+named `M3_1R`, `M3_2R`, `M3_3R`, replaced on the next entry on that symbol.
+
+The same `ShowObject()` list shows an `AddStudy` chart command. It is untested **[I]**, and it
+may contradict the statement above that no command adds a study.
+
 ## The tool
 
 ```sh

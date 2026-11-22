@@ -42,6 +42,20 @@
 // The montage Share box is no longer used. $stopMult = 1.0.
 // At the fill it records $M3_ENTRY (average cost) and $M3_R (the stop
 // distance per share) so script 43 sets targets from the R taken at entry.
+// Last of all it draws three rays on montage3_chart1 at entry plus (LONG)
+// or minus (SHORT) 1R, 2R and 3R, as placeholders, starting at the entry.
+// CreateTrendLine("rayline") and GetTrendline(name) are on the chart object
+// but in no manual; found with ShowObject() 2026-11-21 on DAS 5.8.4.8. A
+// trend-line object has Name, Price, Time, Price1, Time1, color (BGR
+// integer), LineWidth and Delete(); it needs no save call (save() does not
+// exist). GetBar(-1).Time can be assigned to Time as it is.
+// [V replay 2026-11-21 23:40 ET] a named test ray was read back by name as
+// "Ray Line" and the operator saw it on the chart where expected.
+// [V replay 2026-11-21 23:44 ET, both sides, run over the CMD API] LONG
+// then SHORT on one symbol: three rays each time, read back by name as
+// Ray Line at entry +/- 1R 2R 3R; the SHORT set replaced the LONG set; a
+// missing name returns no object. The operator saw both sets on the chart.
+// Rays are replaced per symbol: another symbol keeps its last three.
 // [V replay 2026-11-21 14:58-15:15 ET, montage locked] one press each:
 // SHORT went out as "SHORT <sym> 5 REB25 Limit", filled the same second, the
 // stop followed 1 s later; LONG the same with a sell stop below. Earlier
@@ -179,6 +193,54 @@ if ($o.oid == 0) {
 }
 MsgLog("LONG DONE ", $sym, " ", $pos, " of ", $qty, " stop ", $trigger, " oid ", $o.oid);
 
+// ---- placeholder rays at 1R, 2R, 3R on the chart ---------
+// Last on purpose: the stop is already accepted, so a drawing fault cannot
+// leave shares unprotected. Each ray is named (M3_1R, M3_2R, M3_3R), so the
+// next entry on this symbol deletes its own three and leaves every other
+// line alone. A ray needs two points: it starts one bar before the newest
+// bar and passes through the newest bar at the same price.
+$r2 = $stopDist + $stopDist;
+$r3 = $r2 + $stopDist;
+$l1 = $M3_ENTRY + $stopDist;
+$l2 = $M3_ENTRY + $r2;
+$l3 = $M3_ENTRY + $r3;
+$l1 = Round($l1, 2);
+$l2 = Round($l2, 2);
+$l3 = Round($l3, 2);
+$b1 = $c.GetBar(-1);
+$b2 = $c.GetBar(-2);
+$t = $c.GetTrendline("M3_1R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_1R";
+$t.Price = $l1;
+$t.Price1 = $l1;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 7915640;
+$t.LineWidth = 2;
+$t = $c.GetTrendline("M3_2R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_2R";
+$t.Price = $l2;
+$t.Price1 = $l2;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 3978300;
+$t.LineWidth = 2;
+$t = $c.GetTrendline("M3_3R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_3R";
+$t.Price = $l3;
+$t.Price1 = $l3;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 38400;
+$t.LineWidth = 2;
+MsgLog("LONG RAYS ", $sym, " 1R ", $l1, " 2R ", $l2, " 3R ", $l3, " from ", $b2.Time);
+
 // ==========================================================
 // BLOCK B - SHORT
 // ==========================================================
@@ -309,3 +371,51 @@ if ($o.oid == 0) {
   return;
 }
 MsgLog("SHORT DONE ", $sym, " ", $pos, " of ", $qty, " stop ", $trigger, " oid ", $o.oid);
+
+// ---- placeholder rays at 1R, 2R, 3R on the chart ---------
+// Last on purpose: the stop is already accepted, so a drawing fault cannot
+// leave shares unprotected. Each ray is named (M3_1R, M3_2R, M3_3R), so the
+// next entry on this symbol deletes its own three and leaves every other
+// line alone. A ray needs two points: it starts one bar before the newest
+// bar and passes through the newest bar at the same price.
+$r2 = $stopDist + $stopDist;
+$r3 = $r2 + $stopDist;
+$l1 = $M3_ENTRY - $stopDist;
+$l2 = $M3_ENTRY - $r2;
+$l3 = $M3_ENTRY - $r3;
+$l1 = Round($l1, 2);
+$l2 = Round($l2, 2);
+$l3 = Round($l3, 2);
+$b1 = $c.GetBar(-1);
+$b2 = $c.GetBar(-2);
+$t = $c.GetTrendline("M3_1R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_1R";
+$t.Price = $l1;
+$t.Price1 = $l1;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 7915640;
+$t.LineWidth = 2;
+$t = $c.GetTrendline("M3_2R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_2R";
+$t.Price = $l2;
+$t.Price1 = $l2;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 3978300;
+$t.LineWidth = 2;
+$t = $c.GetTrendline("M3_3R");
+if (isObject($t) == 1) { $t.Delete(); }
+$t = $c.CreateTrendLine("rayline");
+$t.Name = "M3_3R";
+$t.Price = $l3;
+$t.Price1 = $l3;
+$t.Time = $b2.Time;
+$t.Time1 = $b1.Time;
+$t.color = 38400;
+$t.LineWidth = 2;
+MsgLog("SHORT RAYS ", $sym, " 1R ", $l1, " 2R ", $l2, " 3R ", $l3, " from ", $b2.Time);

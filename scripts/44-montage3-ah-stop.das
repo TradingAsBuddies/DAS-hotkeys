@@ -38,7 +38,17 @@
 // [V replay 2026-11-21 16:35-16:38 ET, both sides, run over the CMD API]
 // three range orders cancelled, one LimitP stop accepted within a second,
 // its order id read back; FLATTEN then cancelled it and closed the
-// position. UNTESTED [I]: live paper, and anything after hours.
+// position.
+// [V replay 2026-11-21 21:59 ET, pressed by the operator, short, replay
+// clock in the pre-market] pressed twice on one position: first for the
+// whole size, then again after a hand partial at 1R. The second press
+// cancelled the old stop and sent one for the smaller remaining size, id
+// read back each time. The operator then moved that stop by hand; it
+// triggered and closed the position.
+// The stop and any hand-placed target limits are NOT linked: after the
+// stop closed the position two target limits still rested until the
+// operator cancelled them. Cancel leftover orders after any exit.
+// UNTESTED [I]: live paper, and after hours outside replay.
 // ==========================================================
 $limitSlip = 0.20;
 
